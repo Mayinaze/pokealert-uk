@@ -10,7 +10,7 @@ on:
 jobs:
   scrape:
     runs-on: ubuntu-latest
-    
+
     permissions:
       contents: write   # Needed to commit updated stock.json back to repo
 
@@ -31,7 +31,10 @@ jobs:
       - name: Run scraper
         env:
           RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
-          ALERT_RECIPIENTS: ${{ secrets.ALERT_RECIPIENTS }}
+          ALERT_FROM_EMAIL: ${{ secrets.ALERT_FROM_EMAIL }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+          SITE_URL: ${{ secrets.SITE_URL }}
         run: |
           python scraper/scraper.py
 
@@ -39,6 +42,6 @@ jobs:
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "PokeAlert Bot"
-          git add data/stock.json
+          git add frontend/data/stock.json
           git diff --staged --quiet || git commit -m "chore: update stock data [$(date -u '+%Y-%m-%d %H:%M UTC')]"
           git push
