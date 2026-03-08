@@ -1,0 +1,28 @@
+{
+  "_meta": {
+    "last_updated": "2025-03-08T00:00:00Z",
+    "note": "This file is auto-updated by scraper/scraper.py — do not edit manually"
+  },
+  "stock": [
+    {
+      "release_id": 1,
+      "retailers": [
+        { "name": "Pokemon Center UK", "status": "preorder", "url": "https://www.pokemoncenter.com/en-gb", "last_checked": "2025-03-08T00:00:00Z" },
+        { "name": "Amazon UK",         "status": "preorder", "url": "https://www.amazon.co.uk",            "last_checked": "2025-03-08T00:00:00Z" },
+        { "name": "Smyths",            "status": "preorder", "url": "https://www.smythstoys.com",          "last_checked": "2025-03-08T00:00:00Z" },
+        { "name": "Zatu",              "status": "preorder", "url": "https://www.board-game.co.uk",        "last_checked": "2025-03-08T00:00:00Z" },
+        { "name": "365 Games",         "status": "soldout",  "url": "https://www.365games.co.uk",          "last_checked": "2025-03-08T00:00:00Z" },
+        { "name": "Argos",             "status": "unknown",  "url": "https://www.argos.co.uk",             "last_checked": "2025-03-08T00:00:00Z" }
+      ]
+    },
+    {
+      "release_id": 2,
+      "retailers": [
+        { "name": "Pokemon Center UK", "status": "available", "url": "https://www.pokemoncenter.com/en-gb", "last_checked": "2025-03-08T00:00:00Z" },
+        { "name": "Amazon UK",         "status": "soldout",   "url": "https://www.amazon.co.uk",            "last_checked": "2025-03-08T00:00:00Z" },
+        { "name": "Smyths",            "status": "available", "url": "https://www.smythstoys.com",          "last_checked": "2025-03-08T00:00:00Z" },
+        { "name": "Argos",             "status": "soldout",   "url": "https://www.argos.co.uk",             "last_checked": "2025-03-08T00:00:00Z" }
+      ]
+    }
+  ]
+}

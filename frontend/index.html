@@ -1,0 +1,968 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PokeAlert UK — Pokémon TCG Tracker</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0a0f;
+    --surface: #12121a;
+    --surface2: #1a1a26;
+    --border: #2a2a3a;
+    --yellow: #FFD700;
+    --yellow-dim: #b39800;
+    --blue: #4A90E2;
+    --red: #E24A4A;
+    --green: #4AE2A0;
+    --text: #e8e8f0;
+    --muted: #6b6b80;
+    --font-display: 'Bebas Neue', sans-serif;
+    --font-body: 'DM Sans', sans-serif;
+    --font-mono: 'JetBrains Mono', monospace;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-body);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Background grid effect */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(255,215,0,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,215,0,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .container { max-width: 1200px; margin: 0 auto; padding: 0 24px; position: relative; z-index: 1; }
+
+  /* HEADER */
+  header {
+    border-bottom: 1px solid var(--border);
+    padding: 20px 0;
+    position: sticky;
+    top: 0;
+    background: rgba(10,10,15,0.95);
+    backdrop-filter: blur(12px);
+    z-index: 100;
+  }
+
+  .header-inner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .logo {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+  }
+
+  .logo-main {
+    font-family: var(--font-display);
+    font-size: 2rem;
+    letter-spacing: 2px;
+    color: var(--yellow);
+    text-shadow: 0 0 20px rgba(255,215,0,0.4);
+  }
+
+  .logo-badge {
+    font-family: var(--font-mono);
+    font-size: 0.65rem;
+    background: var(--yellow);
+    color: #000;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-weight: 600;
+    letter-spacing: 1px;
+  }
+
+  .header-meta {
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    color: var(--muted);
+    text-align: right;
+    line-height: 1.6;
+  }
+
+  .header-meta span { color: var(--green); }
+
+  /* HERO STRIP */
+  .hero-strip {
+    background: linear-gradient(135deg, #1a1a00 0%, #0a0a1f 50%, #1a0a0a 100%);
+    border-bottom: 1px solid var(--border);
+    padding: 48px 0 40px;
+    overflow: hidden;
+    position: relative;
+  }
+
+  .hero-strip::after {
+    content: 'POKÉMON TCG';
+    position: absolute;
+    right: -20px;
+    top: 50%;
+    transform: translateY(-50%) rotate(90deg);
+    font-family: var(--font-display);
+    font-size: 6rem;
+    color: rgba(255,215,0,0.04);
+    letter-spacing: 8px;
+    white-space: nowrap;
+    pointer-events: none;
+  }
+
+  .hero-title {
+    font-family: var(--font-display);
+    font-size: clamp(2.5rem, 6vw, 4.5rem);
+    letter-spacing: 3px;
+    line-height: 1;
+    margin-bottom: 12px;
+  }
+
+  .hero-title em {
+    color: var(--yellow);
+    font-style: normal;
+    text-shadow: 0 0 30px rgba(255,215,0,0.5);
+  }
+
+  .hero-sub {
+    color: var(--muted);
+    font-size: 0.95rem;
+    font-weight: 300;
+    max-width: 480px;
+    line-height: 1.6;
+  }
+
+  .hero-stats {
+    display: flex;
+    gap: 32px;
+    margin-top: 28px;
+  }
+
+  .stat {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .stat-num {
+    font-family: var(--font-display);
+    font-size: 2rem;
+    color: var(--yellow);
+    letter-spacing: 1px;
+  }
+
+  .stat-label {
+    font-size: 0.7rem;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    font-weight: 500;
+  }
+
+  /* FILTERS */
+  .filters-bar {
+    padding: 20px 0;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+
+  .filter-label {
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-right: 4px;
+  }
+
+  .filter-btn {
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    padding: 6px 14px;
+    border-radius: 4px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--muted);
+    cursor: pointer;
+    transition: all 0.2s;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+  }
+
+  .filter-btn:hover { border-color: var(--yellow-dim); color: var(--text); }
+  .filter-btn.active { border-color: var(--yellow); color: var(--yellow); background: rgba(255,215,0,0.08); }
+
+  /* MAIN GRID */
+  .main-grid {
+    display: grid;
+    grid-template-columns: 1fr 320px;
+    gap: 24px;
+    padding: 32px 0;
+  }
+
+  /* SECTION HEADERS */
+  .section-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+
+  .section-title {
+    font-family: var(--font-display);
+    font-size: 1.4rem;
+    letter-spacing: 2px;
+    color: var(--text);
+  }
+
+  .section-count {
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    color: var(--muted);
+    background: var(--surface2);
+    padding: 3px 8px;
+    border-radius: 3px;
+    border: 1px solid var(--border);
+  }
+
+  /* RELEASE CARDS */
+  .releases-list { display: flex; flex-direction: column; gap: 12px; }
+
+  .release-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+    transition: all 0.25s;
+    cursor: pointer;
+    animation: fadeSlideIn 0.4s ease both;
+  }
+
+  .release-card:hover {
+    border-color: rgba(255,215,0,0.3);
+    transform: translateY(-1px);
+    box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+  }
+
+  .release-card.featured {
+    border-color: rgba(255,215,0,0.4);
+    background: linear-gradient(135deg, #1a1a0a 0%, #12121a 100%);
+  }
+
+  .release-card.featured::before {
+    content: 'NEXT RELEASE';
+    display: block;
+    background: var(--yellow);
+    color: #000;
+    font-family: var(--font-mono);
+    font-size: 0.65rem;
+    font-weight: 600;
+    letter-spacing: 2px;
+    padding: 5px 16px;
+    text-align: center;
+  }
+
+  .card-body { padding: 18px 20px; }
+
+  .card-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 12px;
+    margin-bottom: 14px;
+  }
+
+  .card-name {
+    font-family: var(--font-display);
+    font-size: 1.3rem;
+    letter-spacing: 1px;
+    line-height: 1.1;
+  }
+
+  .card-series {
+    font-size: 0.75rem;
+    color: var(--muted);
+    margin-top: 3px;
+    font-weight: 300;
+  }
+
+  .card-date {
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    text-align: right;
+    flex-shrink: 0;
+  }
+
+  .date-day { font-size: 1.4rem; font-weight: 600; color: var(--yellow); line-height: 1; }
+  .date-month { color: var(--muted); text-transform: uppercase; letter-spacing: 1px; }
+
+  .card-tags {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    margin-bottom: 14px;
+  }
+
+  .tag {
+    font-family: var(--font-mono);
+    font-size: 0.62rem;
+    padding: 3px 8px;
+    border-radius: 3px;
+    border: 1px solid;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-weight: 600;
+  }
+
+  .tag-etb { color: #a78bfa; border-color: rgba(167,139,250,0.3); background: rgba(167,139,250,0.08); }
+  .tag-box { color: var(--blue); border-color: rgba(74,144,226,0.3); background: rgba(74,144,226,0.08); }
+  .tag-collection { color: var(--green); border-color: rgba(74,226,160,0.3); background: rgba(74,226,160,0.08); }
+  .tag-pack { color: #f97316; border-color: rgba(249,115,22,0.3); background: rgba(249,115,22,0.08); }
+
+  /* RETAILER STATUS ROW */
+  .retailers-row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+
+  .retailer-pill {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-family: var(--font-mono);
+    font-size: 0.68rem;
+    padding: 5px 10px;
+    border-radius: 4px;
+    border: 1px solid var(--border);
+    background: var(--surface2);
+    text-decoration: none;
+    color: var(--text);
+    transition: all 0.2s;
+    font-weight: 500;
+  }
+
+  .retailer-pill:hover { border-color: rgba(255,215,0,0.4); color: var(--yellow); }
+
+  .retailer-pill .dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  .dot-available { background: var(--green); box-shadow: 0 0 6px var(--green); }
+  .dot-preorder { background: var(--yellow); box-shadow: 0 0 6px var(--yellow); }
+  .dot-soldout { background: var(--red); }
+  .dot-unknown { background: var(--muted); }
+
+  /* SIDEBAR */
+  .sidebar { display: flex; flex-direction: column; gap: 20px; }
+
+  .sidebar-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 18px;
+  }
+
+  .sidebar-title {
+    font-family: var(--font-display);
+    font-size: 1rem;
+    letter-spacing: 2px;
+    color: var(--muted);
+    margin-bottom: 14px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .sidebar-title::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  /* ALERT SETUP */
+  .alert-form { display: flex; flex-direction: column; gap: 10px; }
+
+  .alert-input {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 9px 12px;
+    color: var(--text);
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+    outline: none;
+    transition: border-color 0.2s;
+    width: 100%;
+  }
+
+  .alert-input:focus { border-color: var(--yellow-dim); }
+  .alert-input::placeholder { color: var(--muted); }
+
+  .alert-btn {
+    background: var(--yellow);
+    color: #000;
+    border: none;
+    border-radius: 4px;
+    padding: 10px;
+    font-family: var(--font-display);
+    font-size: 1rem;
+    letter-spacing: 2px;
+    cursor: pointer;
+    transition: all 0.2s;
+    width: 100%;
+  }
+
+  .alert-btn:hover { background: #fff; transform: translateY(-1px); }
+
+  /* RETAILER LIST */
+  .retailer-list { display: flex; flex-direction: column; gap: 8px; }
+
+  .retailer-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 10px;
+    border-radius: 4px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    font-size: 0.8rem;
+  }
+
+  .retailer-name { font-weight: 500; }
+  .retailer-status {
+    font-family: var(--font-mono);
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .status-monitoring { color: var(--green); }
+  .status-soon { color: var(--yellow); }
+
+  /* COUNTDOWN */
+  .countdown-display {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+    margin-top: 4px;
+  }
+
+  .countdown-unit {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 10px 6px;
+    text-align: center;
+  }
+
+  .countdown-num {
+    font-family: var(--font-display);
+    font-size: 1.6rem;
+    color: var(--yellow);
+    line-height: 1;
+    display: block;
+  }
+
+  .countdown-label {
+    font-family: var(--font-mono);
+    font-size: 0.55rem;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-top: 3px;
+    display: block;
+  }
+
+  .next-release-name {
+    font-size: 0.8rem;
+    color: var(--muted);
+    margin-bottom: 10px;
+    font-weight: 300;
+  }
+
+  .next-release-name strong { color: var(--text); font-weight: 500; }
+
+  /* FOOTER */
+  footer {
+    border-top: 1px solid var(--border);
+    padding: 24px 0;
+    margin-top: 20px;
+  }
+
+  .footer-inner {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+
+  .footer-text {
+    font-family: var(--font-mono);
+    font-size: 0.68rem;
+    color: var(--muted);
+    line-height: 1.6;
+  }
+
+  .github-link {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    color: var(--muted);
+    text-decoration: none;
+    border: 1px solid var(--border);
+    padding: 8px 14px;
+    border-radius: 4px;
+    transition: all 0.2s;
+  }
+
+  .github-link:hover { border-color: var(--yellow); color: var(--yellow); }
+
+  /* ANIMATIONS */
+  @keyframes fadeSlideIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .pulse {
+    animation: pulse 2s ease-in-out infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+  }
+
+  /* RESPONSIVE */
+  @media (max-width: 768px) {
+    .main-grid { grid-template-columns: 1fr; }
+    .hero-stats { gap: 20px; }
+    .sidebar { order: -1; }
+  }
+
+  .hidden { display: none !important; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="container header-inner">
+    <div class="logo">
+      <span class="logo-main">PokeAlert</span>
+      <span class="logo-badge">UK</span>
+    </div>
+    <div class="header-meta">
+      <div>Last updated: <span id="last-updated">—</span></div>
+      <div>Tracking <span>7</span> UK retailers</div>
+    </div>
+  </div>
+</header>
+
+<div class="hero-strip">
+  <div class="container">
+    <h1 class="hero-title">Track <em>Every Drop.</em><br>Never Miss a Set.</h1>
+    <p class="hero-sub">UK release dates, pre-order availability, and retailer stock — all in one place. Built for collectors.</p>
+    <div class="hero-stats">
+      <div class="stat">
+        <span class="stat-num" id="stat-upcoming">8</span>
+        <span class="stat-label">Upcoming Sets</span>
+      </div>
+      <div class="stat">
+        <span class="stat-num" id="stat-preorder">5</span>
+        <span class="stat-label">Open Pre-orders</span>
+      </div>
+      <div class="stat">
+        <span class="stat-num">7</span>
+        <span class="stat-label">Retailers Tracked</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="container">
+
+  <div class="filters-bar">
+    <span class="filter-label">Filter:</span>
+    <button class="filter-btn active" data-filter="all">All Products</button>
+    <button class="filter-btn" data-filter="etb">Elite Trainer Box</button>
+    <button class="filter-btn" data-filter="box">Booster Box</button>
+    <button class="filter-btn" data-filter="collection">Collection Sets</button>
+    <button class="filter-btn" data-filter="pack">Booster Packs</button>
+  </div>
+
+  <div class="main-grid">
+
+    <!-- RELEASES COLUMN -->
+    <div>
+      <div class="section-header">
+        <h2 class="section-title">UPCOMING RELEASES</h2>
+        <span class="section-count" id="visible-count">8 sets</span>
+      </div>
+
+      <div class="releases-list" id="releases-list">
+        <!-- Populated by JS -->
+      </div>
+    </div>
+
+    <!-- SIDEBAR -->
+    <aside class="sidebar">
+
+      <!-- COUNTDOWN -->
+      <div class="sidebar-card">
+        <div class="sidebar-title">Next Drop</div>
+        <p class="next-release-name">Counting down to <strong id="next-name">—</strong></p>
+        <div class="countdown-display">
+          <div class="countdown-unit">
+            <span class="countdown-num" id="cd-days">00</span>
+            <span class="countdown-label">Days</span>
+          </div>
+          <div class="countdown-unit">
+            <span class="countdown-num" id="cd-hours">00</span>
+            <span class="countdown-label">Hrs</span>
+          </div>
+          <div class="countdown-unit">
+            <span class="countdown-num" id="cd-mins">00</span>
+            <span class="countdown-label">Min</span>
+          </div>
+          <div class="countdown-unit">
+            <span class="countdown-num pulse" id="cd-secs">00</span>
+            <span class="countdown-label">Sec</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- ALERT SIGNUP -->
+      <div class="sidebar-card">
+        <div class="sidebar-title">Get Alerts</div>
+        <div class="alert-form">
+          <input class="alert-input" type="email" placeholder="your@email.com" id="alert-email" />
+          <select class="alert-input" id="alert-type">
+            <option value="">— Alert me when —</option>
+            <option>Any new pre-order goes live</option>
+            <option>Specific set drops</option>
+            <option>Sold-out item restocks</option>
+            <option>All of the above</option>
+          </select>
+          <button class="alert-btn" onclick="setupAlert()">SET ALERT</button>
+          <div id="alert-confirm" style="font-family:var(--font-mono);font-size:0.7rem;color:var(--green);display:none;text-align:center;">
+            ✓ Alert set! We'll notify you.
+          </div>
+        </div>
+      </div>
+
+      <!-- RETAILERS -->
+      <div class="sidebar-card">
+        <div class="sidebar-title">UK Retailers</div>
+        <div class="retailer-list">
+          <div class="retailer-item">
+            <span class="retailer-name">Pokémon Center UK</span>
+            <span class="retailer-status status-monitoring">● Monitoring</span>
+          </div>
+          <div class="retailer-item">
+            <span class="retailer-name">Amazon UK</span>
+            <span class="retailer-status status-monitoring">● Monitoring</span>
+          </div>
+          <div class="retailer-item">
+            <span class="retailer-name">Smyths Toys</span>
+            <span class="retailer-status status-monitoring">● Monitoring</span>
+          </div>
+          <div class="retailer-item">
+            <span class="retailer-name">Argos</span>
+            <span class="retailer-status status-monitoring">● Monitoring</span>
+          </div>
+          <div class="retailer-item">
+            <span class="retailer-name">Zatu Games</span>
+            <span class="retailer-status status-monitoring">● Monitoring</span>
+          </div>
+          <div class="retailer-item">
+            <span class="retailer-name">365 Games</span>
+            <span class="retailer-status status-monitoring">● Monitoring</span>
+          </div>
+          <div class="retailer-item">
+            <span class="retailer-name">GameStop UK</span>
+            <span class="retailer-status status-soon">◐ Adding Soon</span>
+          </div>
+        </div>
+      </div>
+
+    </aside>
+  </div>
+</div>
+
+<footer>
+  <div class="container footer-inner">
+    <div class="footer-text">
+      PokeAlert UK — Fan-made tracker. Not affiliated with Nintendo, Game Freak or The Pokémon Company.<br>
+      Pre-order links and availability are checked periodically. Always verify on retailer sites.
+    </div>
+    <a href="https://github.com" class="github-link" target="_blank">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.374 0 0 5.373 0 12c0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23A11.509 11.509 0 0112 5.803c1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576C20.566 21.797 24 17.3 24 12c0-6.627-5.373-12-12-12z"/></svg>
+      View on GitHub
+    </a>
+  </div>
+</footer>
+
+<script>
+// ============================================================
+// DATA — Update this to pull from API/scraper in the future
+// ============================================================
+const releases = [
+  {
+    id: 1,
+    name: "Scarlet & Violet — Destined Rivals",
+    series: "Scarlet & Violet Series",
+    releaseDate: new Date("2025-05-30"),
+    products: ["etb", "box", "collection", "pack"],
+    retailers: [
+      { name: "Pokémon Center UK", status: "preorder", url: "https://www.pokemoncenter.com/en-gb" },
+      { name: "Amazon UK", status: "preorder", url: "https://www.amazon.co.uk" },
+      { name: "Smyths", status: "preorder", url: "https://www.smythstoys.com" },
+      { name: "Zatu", status: "preorder", url: "https://www.board-game.co.uk" },
+      { name: "365 Games", status: "soldout", url: "https://www.365games.co.uk" },
+      { name: "Argos", status: "unknown", url: "https://www.argos.co.uk" },
+    ],
+    featured: true
+  },
+  {
+    id: 2,
+    name: "Scarlet & Violet — Prismatic Evolutions",
+    series: "Scarlet & Violet Series",
+    releaseDate: new Date("2025-01-17"),
+    products: ["etb", "collection"],
+    retailers: [
+      { name: "Pokémon Center UK", status: "available", url: "https://www.pokemoncenter.com/en-gb" },
+      { name: "Amazon UK", status: "soldout", url: "https://www.amazon.co.uk" },
+      { name: "Smyths", status: "available", url: "https://www.smythstoys.com" },
+      { name: "Argos", status: "soldout", url: "https://www.argos.co.uk" },
+    ],
+    featured: false
+  },
+  {
+    id: 3,
+    name: "Scarlet & Violet — Journey Together",
+    series: "Scarlet & Violet Series",
+    releaseDate: new Date("2025-03-28"),
+    products: ["etb", "box", "pack"],
+    retailers: [
+      { name: "Pokémon Center UK", status: "preorder", url: "https://www.pokemoncenter.com/en-gb" },
+      { name: "Amazon UK", status: "preorder", url: "https://www.amazon.co.uk" },
+      { name: "Zatu", status: "preorder", url: "https://www.board-game.co.uk" },
+      { name: "365 Games", status: "preorder", url: "https://www.365games.co.uk" },
+    ],
+    featured: false
+  },
+  {
+    id: 4,
+    name: "Pokémon GO — Crossover Collection",
+    series: "Special Series",
+    releaseDate: new Date("2025-06-20"),
+    products: ["collection", "pack"],
+    retailers: [
+      { name: "Pokémon Center UK", status: "preorder", url: "https://www.pokemoncenter.com/en-gb" },
+      { name: "Amazon UK", status: "unknown", url: "https://www.amazon.co.uk" },
+      { name: "Smyths", status: "unknown", url: "https://www.smythstoys.com" },
+    ],
+    featured: false
+  },
+  {
+    id: 5,
+    name: "Scarlet & Violet — Black Bolt",
+    series: "Scarlet & Violet Series",
+    releaseDate: new Date("2025-08-01"),
+    products: ["etb", "box", "collection", "pack"],
+    retailers: [
+      { name: "Pokémon Center UK", status: "unknown", url: "https://www.pokemoncenter.com/en-gb" },
+      { name: "Amazon UK", status: "unknown", url: "https://www.amazon.co.uk" },
+    ],
+    featured: false
+  },
+  {
+    id: 6,
+    name: "Crown Zenith — Special Collection",
+    series: "Special Series",
+    releaseDate: new Date("2025-04-11"),
+    products: ["collection"],
+    retailers: [
+      { name: "Pokémon Center UK", status: "preorder", url: "https://www.pokemoncenter.com/en-gb" },
+      { name: "Zatu", status: "preorder", url: "https://www.board-game.co.uk" },
+      { name: "365 Games", status: "soldout", url: "https://www.365games.co.uk" },
+    ],
+    featured: false
+  },
+  {
+    id: 7,
+    name: "151 — Booster Bundle Reprint",
+    series: "Scarlet & Violet Series",
+    releaseDate: new Date("2025-04-25"),
+    products: ["box", "pack"],
+    retailers: [
+      { name: "Amazon UK", status: "preorder", url: "https://www.amazon.co.uk" },
+      { name: "Argos", status: "preorder", url: "https://www.argos.co.uk" },
+      { name: "Smyths", status: "preorder", url: "https://www.smythstoys.com" },
+      { name: "365 Games", status: "preorder", url: "https://www.365games.co.uk" },
+    ],
+    featured: false
+  },
+  {
+    id: 8,
+    name: "Paradox Rift — Elite Trainer Box Restock",
+    series: "Scarlet & Violet Series",
+    releaseDate: new Date("2025-03-14"),
+    products: ["etb"],
+    retailers: [
+      { name: "Pokémon Center UK", status: "available", url: "https://www.pokemoncenter.com/en-gb" },
+      { name: "Amazon UK", status: "available", url: "https://www.amazon.co.uk" },
+      { name: "Smyths", status: "soldout", url: "https://www.smythstoys.com" },
+    ],
+    featured: false
+  }
+];
+
+// ============================================================
+// RENDER
+// ============================================================
+const tagMap = {
+  etb:        { label: "ETB",        cls: "tag-etb" },
+  box:        { label: "Booster Box", cls: "tag-box" },
+  collection: { label: "Collection", cls: "tag-collection" },
+  pack:       { label: "Booster Pack", cls: "tag-pack" }
+};
+
+const statusMap = {
+  available: { dot: "dot-available", label: "Available" },
+  preorder:  { dot: "dot-preorder",  label: "Pre-order" },
+  soldout:   { dot: "dot-soldout",   label: "Sold Out" },
+  unknown:   { dot: "dot-unknown",   label: "Check Site" }
+};
+
+function formatDate(d) {
+  const day = d.getDate();
+  const month = d.toLocaleString('en-GB', { month: 'short' }).toUpperCase();
+  const year = d.getFullYear();
+  return { day, month, year };
+}
+
+function renderCard(r) {
+  const { day, month, year } = formatDate(r.releaseDate);
+  const tags = r.products.map(p =>
+    `<span class="tag ${tagMap[p].cls}">${tagMap[p].label}</span>`
+  ).join('');
+
+  const retailers = r.retailers.map(ret => {
+    const s = statusMap[ret.status] || statusMap.unknown;
+    return `<a href="${ret.url}" target="_blank" class="retailer-pill">
+      <span class="dot ${s.dot}"></span>${ret.name} — ${s.label}
+    </a>`;
+  }).join('');
+
+  return `
+    <div class="release-card ${r.featured ? 'featured' : ''}" data-products="${r.products.join(' ')}">
+      <div class="card-body">
+        <div class="card-top">
+          <div>
+            <div class="card-name">${r.name}</div>
+            <div class="card-series">${r.series}</div>
+          </div>
+          <div class="card-date">
+            <div class="date-day">${day}</div>
+            <div class="date-month">${month} ${year}</div>
+          </div>
+        </div>
+        <div class="card-tags">${tags}</div>
+        <div class="retailers-row">${retailers}</div>
+      </div>
+    </div>
+  `;
+}
+
+function renderAll(filter = 'all') {
+  const list = document.getElementById('releases-list');
+  const filtered = filter === 'all'
+    ? releases
+    : releases.filter(r => r.products.includes(filter));
+
+  list.innerHTML = filtered.map(renderCard).join('');
+  document.getElementById('visible-count').textContent = `${filtered.length} set${filtered.length !== 1 ? 's' : ''}`;
+  document.getElementById('stat-upcoming').textContent = releases.length;
+  const preorderCount = releases.filter(r => r.retailers.some(ret => ret.status === 'preorder')).length;
+  document.getElementById('stat-preorder').textContent = preorderCount;
+}
+
+// ============================================================
+// FILTERS
+// ============================================================
+document.querySelectorAll('.filter-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    renderAll(btn.dataset.filter);
+  });
+});
+
+// ============================================================
+// COUNTDOWN
+// ============================================================
+function updateCountdown() {
+  const sorted = [...releases].sort((a, b) => a.releaseDate - b.releaseDate);
+  const next = sorted.find(r => r.releaseDate > new Date()) || sorted[0];
+  document.getElementById('next-name').textContent = next.name;
+
+  const diff = next.releaseDate - new Date();
+  if (diff <= 0) {
+    ['cd-days','cd-hours','cd-mins','cd-secs'].forEach(id => document.getElementById(id).textContent = '00');
+    return;
+  }
+
+  const days  = Math.floor(diff / 86400000);
+  const hours = Math.floor((diff % 86400000) / 3600000);
+  const mins  = Math.floor((diff % 3600000) / 60000);
+  const secs  = Math.floor((diff % 60000) / 1000);
+
+  document.getElementById('cd-days').textContent  = String(days).padStart(2,'0');
+  document.getElementById('cd-hours').textContent = String(hours).padStart(2,'0');
+  document.getElementById('cd-mins').textContent  = String(mins).padStart(2,'0');
+  document.getElementById('cd-secs').textContent  = String(secs).padStart(2,'0');
+}
+
+// ============================================================
+// ALERT SETUP
+// ============================================================
+function setupAlert() {
+  const email = document.getElementById('alert-email').value;
+  const type  = document.getElementById('alert-type').value;
+  if (!email || !type) return;
+  document.getElementById('alert-confirm').style.display = 'block';
+  document.getElementById('alert-email').value = '';
+}
+
+// ============================================================
+// INIT
+// ============================================================
+document.getElementById('last-updated').textContent =
+  new Date().toLocaleString('en-GB', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' });
+
+renderAll();
+updateCountdown();
+setInterval(updateCountdown, 1000);
+</script>
+</body>
+</html>

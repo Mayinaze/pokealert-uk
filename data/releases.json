@@ -1,0 +1,52 @@
+[
+  {
+    "id": 1,
+    "name": "Scarlet & Violet — Destined Rivals",
+    "series": "Scarlet & Violet Series",
+    "release_date": "2025-05-30",
+    "products": ["etb", "booster_box", "collection", "booster_pack"],
+    "featured": true,
+    "official_url": "https://www.pokemon.com/en-gb/",
+    "notes": "Full set details TBC"
+  },
+  {
+    "id": 2,
+    "name": "Scarlet & Violet — Prismatic Evolutions",
+    "series": "Scarlet & Violet Series",
+    "release_date": "2025-01-17",
+    "products": ["etb", "collection"],
+    "featured": false,
+    "official_url": "https://www.pokemon.com/en-gb/",
+    "notes": "High demand set — restock likely"
+  },
+  {
+    "id": 3,
+    "name": "Scarlet & Violet — Journey Together",
+    "series": "Scarlet & Violet Series",
+    "release_date": "2025-03-28",
+    "products": ["etb", "booster_box", "booster_pack"],
+    "featured": false,
+    "official_url": "https://www.pokemon.com/en-gb/",
+    "notes": ""
+  },
+  {
+    "id": 4,
+    "name": "Pokémon GO — Crossover Collection",
+    "series": "Special Series",
+    "release_date": "2025-06-20",
+    "products": ["collection", "booster_pack"],
+    "featured": false,
+    "official_url": "https://www.pokemon.com/en-gb/",
+    "notes": "Collaboration set"
+  },
+  {
+    "id": 5,
+    "name": "Scarlet & Violet — Black Bolt",
+    "series": "Scarlet & Violet Series",
+    "release_date": "2025-08-01",
+    "products": ["etb", "booster_box", "collection", "booster_pack"],
+    "featured": false,
+    "official_url": "https://www.pokemon.com/en-gb/",
+    "notes": "Date approximate — confirm on official site"
+  }
+]
