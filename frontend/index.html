@@ -723,119 +723,40 @@
 
 <script>
 // ============================================================
-// DATA — Update this to pull from API/scraper in the future
+// DATA — loaded from data/releases.json + data/stock.json
 // ============================================================
-const releases = [
-  {
-    id: 1,
-    name: "Scarlet & Violet — Destined Rivals",
-    series: "Scarlet & Violet Series",
-    releaseDate: new Date("2025-05-30"),
-    products: ["etb", "box", "collection", "pack"],
-    retailers: [
-      { name: "Pokémon Center UK", status: "preorder", url: "https://www.pokemoncenter.com/en-gb" },
-      { name: "Amazon UK", status: "preorder", url: "https://www.amazon.co.uk" },
-      { name: "Smyths", status: "preorder", url: "https://www.smythstoys.com" },
-      { name: "Zatu", status: "preorder", url: "https://www.board-game.co.uk" },
-      { name: "365 Games", status: "soldout", url: "https://www.365games.co.uk" },
-      { name: "Argos", status: "unknown", url: "https://www.argos.co.uk" },
-    ],
-    featured: true
-  },
-  {
-    id: 2,
-    name: "Scarlet & Violet — Prismatic Evolutions",
-    series: "Scarlet & Violet Series",
-    releaseDate: new Date("2025-01-17"),
-    products: ["etb", "collection"],
-    retailers: [
-      { name: "Pokémon Center UK", status: "available", url: "https://www.pokemoncenter.com/en-gb" },
-      { name: "Amazon UK", status: "soldout", url: "https://www.amazon.co.uk" },
-      { name: "Smyths", status: "available", url: "https://www.smythstoys.com" },
-      { name: "Argos", status: "soldout", url: "https://www.argos.co.uk" },
-    ],
-    featured: false
-  },
-  {
-    id: 3,
-    name: "Scarlet & Violet — Journey Together",
-    series: "Scarlet & Violet Series",
-    releaseDate: new Date("2025-03-28"),
-    products: ["etb", "box", "pack"],
-    retailers: [
-      { name: "Pokémon Center UK", status: "preorder", url: "https://www.pokemoncenter.com/en-gb" },
-      { name: "Amazon UK", status: "preorder", url: "https://www.amazon.co.uk" },
-      { name: "Zatu", status: "preorder", url: "https://www.board-game.co.uk" },
-      { name: "365 Games", status: "preorder", url: "https://www.365games.co.uk" },
-    ],
-    featured: false
-  },
-  {
-    id: 4,
-    name: "Pokémon GO — Crossover Collection",
-    series: "Special Series",
-    releaseDate: new Date("2025-06-20"),
-    products: ["collection", "pack"],
-    retailers: [
-      { name: "Pokémon Center UK", status: "preorder", url: "https://www.pokemoncenter.com/en-gb" },
-      { name: "Amazon UK", status: "unknown", url: "https://www.amazon.co.uk" },
-      { name: "Smyths", status: "unknown", url: "https://www.smythstoys.com" },
-    ],
-    featured: false
-  },
-  {
-    id: 5,
-    name: "Scarlet & Violet — Black Bolt",
-    series: "Scarlet & Violet Series",
-    releaseDate: new Date("2025-08-01"),
-    products: ["etb", "box", "collection", "pack"],
-    retailers: [
-      { name: "Pokémon Center UK", status: "unknown", url: "https://www.pokemoncenter.com/en-gb" },
-      { name: "Amazon UK", status: "unknown", url: "https://www.amazon.co.uk" },
-    ],
-    featured: false
-  },
-  {
-    id: 6,
-    name: "Crown Zenith — Special Collection",
-    series: "Special Series",
-    releaseDate: new Date("2025-04-11"),
-    products: ["collection"],
-    retailers: [
-      { name: "Pokémon Center UK", status: "preorder", url: "https://www.pokemoncenter.com/en-gb" },
-      { name: "Zatu", status: "preorder", url: "https://www.board-game.co.uk" },
-      { name: "365 Games", status: "soldout", url: "https://www.365games.co.uk" },
-    ],
-    featured: false
-  },
-  {
-    id: 7,
-    name: "151 — Booster Bundle Reprint",
-    series: "Scarlet & Violet Series",
-    releaseDate: new Date("2025-04-25"),
-    products: ["box", "pack"],
-    retailers: [
-      { name: "Amazon UK", status: "preorder", url: "https://www.amazon.co.uk" },
-      { name: "Argos", status: "preorder", url: "https://www.argos.co.uk" },
-      { name: "Smyths", status: "preorder", url: "https://www.smythstoys.com" },
-      { name: "365 Games", status: "preorder", url: "https://www.365games.co.uk" },
-    ],
-    featured: false
-  },
-  {
-    id: 8,
-    name: "Paradox Rift — Elite Trainer Box Restock",
-    series: "Scarlet & Violet Series",
-    releaseDate: new Date("2025-03-14"),
-    products: ["etb"],
-    retailers: [
-      { name: "Pokémon Center UK", status: "available", url: "https://www.pokemoncenter.com/en-gb" },
-      { name: "Amazon UK", status: "available", url: "https://www.amazon.co.uk" },
-      { name: "Smyths", status: "soldout", url: "https://www.smythstoys.com" },
-    ],
-    featured: false
-  }
-];
+let releases = [];
+
+const PRODUCT_MAP = { booster_box: 'box', booster_pack: 'pack' };
+
+async function loadData() {
+  const [releasesRes, stockRes] = await Promise.allSettled([
+    fetch('./data/releases.json'),
+    fetch('./data/stock.json')
+  ]);
+
+  const rawReleases = releasesRes.status === 'fulfilled' && releasesRes.value.ok
+    ? await releasesRes.value.json() : [];
+  const stockData = stockRes.status === 'fulfilled' && stockRes.value.ok
+    ? (await stockRes.value.json()).stock : [];
+
+  releases = rawReleases.map(r => {
+    const stock = stockData.find(s => s.release_id === r.id);
+    return {
+      id: r.id,
+      name: r.name,
+      series: r.series,
+      releaseDate: new Date(r.release_date),
+      products: r.products.map(p => PRODUCT_MAP[p] || p),
+      retailers: stock ? stock.retailers : [],
+      featured: r.featured
+    };
+  });
+
+  renderAll();
+  updateCountdown();
+  setInterval(updateCountdown, 1000);
+}
 
 // ============================================================
 // RENDER
@@ -960,9 +881,7 @@ function setupAlert() {
 document.getElementById('last-updated').textContent =
   new Date().toLocaleString('en-GB', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' });
 
-renderAll();
-updateCountdown();
-setInterval(updateCountdown, 1000);
+loadData();
 </script>
 </body>
 </html>

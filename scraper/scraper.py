@@ -31,8 +31,8 @@ log = logging.getLogger(__name__)
 
 # ── Paths ────────────────────────────────────────────────────
 ROOT       = Path(__file__).parent.parent
-RELEASES_F = ROOT / "data" / "releases.json"
-STOCK_F    = ROOT / "data" / "stock.json"
+RELEASES_F = ROOT / "frontend" / "data" / "releases.json"
+STOCK_F    = ROOT / "frontend" / "data" / "stock.json"
 
 # ── Helpers ──────────────────────────────────────────────────
 def load_json(path: Path) -> dict | list:
