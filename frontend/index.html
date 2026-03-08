@@ -657,15 +657,16 @@
           <input class="alert-input" type="email" placeholder="your@email.com" id="alert-email" />
           <select class="alert-input" id="alert-type">
             <option value="">— Alert me when —</option>
-            <option>Any new pre-order goes live</option>
-            <option>Specific set drops</option>
-            <option>Sold-out item restocks</option>
-            <option>All of the above</option>
+            <option value='{"preorder":true,"restock":true,"release_day":true}'>All alerts (recommended)</option>
+            <option value='{"preorder":true,"restock":false,"release_day":false}'>Pre-orders only</option>
+            <option value='{"preorder":false,"restock":true,"release_day":false}'>Restocks only</option>
+            <option value='{"preorder":false,"restock":false,"release_day":true}'>Release day only</option>
           </select>
+          <p style="font-family:var(--font-mono);font-size:0.65rem;color:var(--muted);margin:0 0 10px;line-height:1.5;">
+            We'll email you the moment pre-orders open, when stock returns, and on release day.
+          </p>
           <button class="alert-btn" onclick="setupAlert()">SET ALERT</button>
-          <div id="alert-confirm" style="font-family:var(--font-mono);font-size:0.7rem;color:var(--green);display:none;text-align:center;">
-            ✓ Alert set! We'll notify you.
-          </div>
+          <div id="alert-confirm" style="font-family:var(--font-mono);font-size:0.7rem;color:var(--green);display:none;text-align:center;margin-top:10px;line-height:1.6;"></div>
         </div>
       </div>
 
@@ -721,6 +722,8 @@
   </div>
 </footer>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="config.js"></script>
 <script>
 // ============================================================
 // DATA — loaded from data/releases.json + data/stock.json
@@ -867,12 +870,60 @@ function updateCountdown() {
 // ============================================================
 // ALERT SETUP
 // ============================================================
-function setupAlert() {
-  const email = document.getElementById('alert-email').value;
-  const type  = document.getElementById('alert-type').value;
-  if (!email || !type) return;
-  document.getElementById('alert-confirm').style.display = 'block';
-  document.getElementById('alert-email').value = '';
+async function setupAlert() {
+  const emailEl   = document.getElementById('alert-email');
+  const typeEl    = document.getElementById('alert-type');
+  const confirmEl = document.getElementById('alert-confirm');
+  const btn       = document.querySelector('.alert-btn');
+
+  const email = emailEl.value.trim();
+  const typeVal = typeEl.value;
+  if (!email || !typeVal) return;
+
+  btn.disabled = true;
+  btn.textContent = 'SETTING...';
+  confirmEl.style.display = 'none';
+
+  let preferences;
+  try { preferences = JSON.parse(typeVal); }
+  catch { preferences = { preorder: true, restock: true, release_day: true }; }
+
+  const unsubscribe_token = crypto.randomUUID();
+
+  try {
+    if (typeof SUPABASE_URL === 'undefined' || SUPABASE_URL.includes('YOUR_PROJECT')) {
+      throw new Error('Supabase not configured');
+    }
+    const { createClient } = supabase;
+    const client = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    const { error } = await client.from('subscribers').insert({
+      email,
+      preferences,
+      unsubscribe_token
+    });
+
+    if (error && error.code === '23505') {
+      // Duplicate email — already subscribed
+      confirmEl.style.color = 'var(--green)';
+      confirmEl.innerHTML = '✓ You\'re already signed up!';
+    } else if (error) {
+      throw error;
+    } else {
+      confirmEl.style.color = 'var(--green)';
+      confirmEl.innerHTML = '✓ Check your inbox for a confirmation email.';
+      emailEl.value = '';
+      typeEl.value  = '';
+    }
+  } catch (e) {
+    confirmEl.style.color = 'var(--red)';
+    confirmEl.innerHTML = '✗ Something went wrong — try again.';
+    console.error('Signup error:', e);
+  }
+
+  confirmEl.style.display = 'block';
+  btn.disabled = false;
+  btn.textContent = 'SET ALERT';
 }
 
 // ============================================================

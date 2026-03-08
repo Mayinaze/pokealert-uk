@@ -13,7 +13,7 @@ Scheduled via GitHub Actions every 6 hours.
 import json
 import os
 import logging
-from datetime import datetime, timezone
+from datetime import datetime, timezone, date
 from pathlib import Path
 
 # Retailer scrapers (add new ones here as you build them)
@@ -22,6 +22,9 @@ from retailers.games365 import scrape_365games
 from retailers.smyths import scrape_smyths
 # from retailers.amazon import scrape_amazon        # TODO — harder, needs workaround
 # from retailers.pokemon_center import scrape_pc    # TODO
+
+from emails import welcome_email, preorder_alert, restock_alert, release_day_alert
+from supabase_client import get_subscribers, get_all_subscribers
 
 logging.basicConfig(
     level=logging.INFO,
@@ -46,6 +49,37 @@ def save_json(path: Path, data: dict | list) -> None:
 
 def now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
+
+def _site_url() -> str:
+    return os.environ.get("SITE_URL", "https://pokealert.uk").rstrip("/")
+
+def _unsubscribe_url(token: str | None) -> str:
+    if not token:
+        return f"{_site_url()}/unsubscribe.html"
+    return f"{_site_url()}/unsubscribe.html?token={token}"
+
+# ── Resend helper ─────────────────────────────────────────────
+def _send_email(to: str, subject: str, html: str) -> bool:
+    """Send one email via Resend. Returns True on success."""
+    api_key = os.environ.get("RESEND_API_KEY")
+    if not api_key:
+        log.warning("RESEND_API_KEY not set — skipping email")
+        return False
+
+    from_addr = os.environ.get("ALERT_FROM_EMAIL", "PokeAlert UK <alerts@pokealert.uk>")
+
+    try:
+        import resend
+        resend.api_key = api_key
+        resend.Emails.send({"from": from_addr, "to": to, "subject": subject, "html": html})
+        log.info(f"Email sent to {to}: {subject}")
+        return True
+    except ImportError:
+        log.warning("resend package not installed — pip install resend")
+        return False
+    except Exception as e:
+        log.error(f"Failed to send email to {to}: {e}")
+        return False
 
 # ── Status change detection ───────────────────────────────────
 def find_changes(old_stock: list, new_stock: list) -> list[dict]:
@@ -73,51 +107,73 @@ def find_changes(old_stock: list, new_stock: list) -> list[dict]:
 
 # ── Email alerts ──────────────────────────────────────────────
 def send_alerts(changes: list[dict], releases: list[dict]) -> None:
-    """Send email alerts for status changes via Resend."""
+    """Send per-retailer email alerts for status changes."""
     if not changes:
         log.info("No status changes — no alerts to send")
-        return
-
-    api_key = os.environ.get("RESEND_API_KEY")
-    if not api_key:
-        log.warning("RESEND_API_KEY not set — skipping alerts")
-        return
-
-    try:
-        import resend
-        resend.api_key = api_key
-    except ImportError:
-        log.warning("resend package not installed — pip install resend")
         return
 
     release_map = {r["id"]: r["name"] for r in releases}
 
     for change in changes:
+        new_status = change["new_status"]
+
+        # Map status transition → alert type
+        if new_status == "preorder":
+            alert_type = "preorder"
+        elif new_status == "available":
+            alert_type = "restock"
+        else:
+            # soldout / unknown transitions don't warrant an alert
+            continue
+
         set_name = release_map.get(change["release_id"], f"Set #{change['release_id']}")
-        subject  = f"PokeAlert UK: {set_name} is now {change['new_status']} at {change['retailer']}"
-        body     = (
-            f"<h2>Stock Update 🎴</h2>"
-            f"<p><strong>{set_name}</strong> changed at <strong>{change['retailer']}</strong>:</p>"
-            f"<p>{change['old_status'].upper()} → <strong>{change['new_status'].upper()}</strong></p>"
-            f"<p><a href='{change['url']}'>Check it now →</a></p>"
-            f"<hr><p style='color:#999;font-size:12px'>PokeAlert UK — fan-made tracker</p>"
-        )
+        retailer = change["retailer"]
+        url      = change["url"]
 
-        # TODO: replace with your subscriber list / Supabase query
-        recipients = os.environ.get("ALERT_RECIPIENTS", "").split(",")
-        recipients = [r.strip() for r in recipients if r.strip()]
+        subscribers = get_subscribers(alert_type)
+        log.info(f"  Sending {alert_type} alert for '{set_name}' @ {retailer} to {len(subscribers)} subscriber(s)")
 
-        for email in recipients:
-            try:
-                resend.Emails.send({
-                    "from": "PokeAlert UK <alerts@yourdomain.com>",
-                    "to": email,
-                    "subject": subject,
-                    "html": body
-                })
-                log.info(f"Alert sent to {email} for {set_name}")
-            except Exception as e:
-                log.error(f"Failed to send alert to {email}: {e}")
+        for sub in subscribers:
+            token  = sub.get("unsubscribe_token")
+            unsub  = _unsubscribe_url(token)
+
+            if alert_type == "preorder":
+                subject, html = preorder_alert(set_name, retailer, url, unsub)
+            else:
+                subject, html = restock_alert(set_name, retailer, url, unsub)
+
+            _send_email(sub["email"], subject, html)
+
+# ── Release day check ─────────────────────────────────────────
+def check_release_day(releases: list[dict], new_stock: list) -> None:
+    """
+    Send release day emails for any set releasing today (UTC).
+    Triggered on every scraper run — fires at most once per day per set.
+    """
+    today = date.today()
+
+    stock_map = {entry["release_id"]: entry["retailers"] for entry in new_stock}
+
+    for release in releases:
+        try:
+            release_date = date.fromisoformat(release["release_date"])
+        except (KeyError, ValueError):
+            continue
+
+        if release_date != today:
+            continue
+
+        set_name  = release["name"]
+        retailers = stock_map.get(release["id"], [])
+
+        subscribers = get_all_subscribers()
+        log.info(f"Release day: '{set_name}' — alerting {len(subscribers)} subscriber(s)")
+
+        for sub in subscribers:
+            token  = sub.get("unsubscribe_token")
+            unsub  = _unsubscribe_url(token)
+            subject, html = release_day_alert(set_name, retailers, unsub)
+            _send_email(sub["email"], subject, html)
 
 # ── Main ─────────────────────────────────────────────────────
 def main():
@@ -171,7 +227,7 @@ def main():
         if retailers_list:
             new_stock.append({"release_id": rid, "retailers": retailers_list})
 
-    # Detect changes and alert
+    # Detect changes and send stock alerts
     changes = find_changes(old_stock, new_stock)
     log.info(f"Detected {len(changes)} status change(s)")
     for c in changes:
@@ -187,6 +243,9 @@ def main():
         },
         "stock": new_stock
     })
+
+    # Check if any set releases today and fire release day emails
+    check_release_day(releases, new_stock)
 
     log.info("=== Done ===")
 

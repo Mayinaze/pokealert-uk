@@ -3,3 +3,4 @@ beautifulsoup4==4.12.3
 lxml==5.1.0
 resend==0.7.0
 python-dotenv==1.0.1
+supabase>=2.0.0

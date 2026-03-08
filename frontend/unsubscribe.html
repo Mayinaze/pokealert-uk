@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Unsubscribe — PokeAlert UK</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0a0f;
+    --surface: #12121a;
+    --border: #2a2a3a;
+    --yellow: #FFD700;
+    --green: #4AE2A0;
+    --red: #E24A4A;
+    --text: #e8e8f0;
+    --muted: #6b6b80;
+    --font-display: 'Bebas Neue', sans-serif;
+    --font-body: 'DM Sans', sans-serif;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-body);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+  }
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 48px 40px;
+    max-width: 480px;
+    width: 100%;
+    text-align: center;
+  }
+  .logo {
+    font-family: var(--font-display);
+    font-size: 20px;
+    letter-spacing: 3px;
+    color: var(--yellow);
+    margin-bottom: 32px;
+  }
+  .icon { font-size: 48px; margin-bottom: 20px; }
+  h1 { font-size: 22px; font-weight: 700; margin-bottom: 12px; }
+  p { font-size: 14px; color: var(--muted); line-height: 1.6; margin-bottom: 28px; }
+  .btn {
+    display: inline-block;
+    padding: 12px 24px;
+    background: var(--yellow);
+    color: #0a0a0f;
+    font-weight: 700;
+    font-size: 13px;
+    letter-spacing: 1px;
+    border-radius: 6px;
+    text-decoration: none;
+  }
+  .spinner {
+    width: 32px;
+    height: 32px;
+    border: 3px solid var(--border);
+    border-top-color: var(--yellow);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    margin: 0 auto 20px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+
+<div class="card">
+  <div class="logo">POKEALERT UK</div>
+
+  <!-- Loading state -->
+  <div id="state-loading">
+    <div class="spinner"></div>
+    <p>Unsubscribing you...</p>
+  </div>
+
+  <!-- Success state -->
+  <div id="state-success" style="display:none;">
+    <div class="icon">✓</div>
+    <h1 style="color: var(--green);">You've been unsubscribed</h1>
+    <p>You won't receive any more alerts from PokeAlert UK. Changed your mind? You can always sign up again from the main site.</p>
+    <a href="/" class="btn">Back to PokeAlert UK</a>
+  </div>
+
+  <!-- Error state -->
+  <div id="state-error" style="display:none;">
+    <div class="icon">✗</div>
+    <h1 style="color: var(--red);">Link expired or invalid</h1>
+    <p>This unsubscribe link has already been used or is no longer valid. If you're still receiving emails, please use the link from your most recent alert.</p>
+    <a href="/" class="btn">Back to PokeAlert UK</a>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="config.js"></script>
+<script>
+(async () => {
+  const params = new URLSearchParams(window.location.search);
+  const token  = params.get('token');
+
+  function show(id) {
+    ['state-loading','state-success','state-error'].forEach(s =>
+      document.getElementById(s).style.display = s === id ? 'block' : 'none'
+    );
+  }
+
+  if (!token) {
+    show('state-error');
+    return;
+  }
+
+  try {
+    if (typeof SUPABASE_URL === 'undefined' || SUPABASE_URL.includes('YOUR_PROJECT')) {
+      throw new Error('Supabase not configured');
+    }
+    const { createClient } = supabase;
+    const client = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    const { error, count } = await client
+      .from('subscribers')
+      .delete({ count: 'exact' })
+      .eq('unsubscribe_token', token);
+
+    if (error) throw error;
+    show(count > 0 ? 'state-success' : 'state-error');
+  } catch (e) {
+    console.error('Unsubscribe error:', e);
+    show('state-error');
+  }
+})();
+</script>
+</body>
+</html>

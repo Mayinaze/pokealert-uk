@@ -2,6 +2,9 @@
 .env
 *.env.local
 
+# Frontend Supabase config (contains anon key — copy from config.example.js)
+frontend/config.js
+
 # Python
 __pycache__/
 *.py[cod]
