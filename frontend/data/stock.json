@@ -1,6 +1,6 @@
 {
   "_meta": {
-    "last_updated": "2026-03-13T01:02:32.855548+00:00",
+    "last_updated": "2026-03-13T06:38:21.839644+00:00",
     "note": "Auto-updated by scraper/scraper.py \u2014 do not edit manually"
   },
   "stock": [
@@ -10,20 +10,20 @@
         {
           "name": "Zatu",
           "status": "preorder",
-          "url": "https://www.board-game.co.uk/en-us/products/pokemon-tcg-mega-evolution-ascended-heroes-mega-emboar-ex-box?_pos=9&_sid=17e9c7923&_ss=r",
-          "last_checked": "2026-03-13T01:02:32.854979+00:00"
+          "url": "https://www.board-game.co.uk/en-us/products/pokemon-tcg-mega-evolution-ascended-heroes-mega-emboar-ex-box?_pos=9&_sid=d6d0ad230&_ss=r",
+          "last_checked": "2026-03-13T06:38:21.839205+00:00"
         },
         {
           "name": "365 Games",
           "status": "unknown",
           "url": "https://www.365games.co.uk/search?q=Mega%20Evolution%20%E2%80%94%20Ascended%20Heroes",
-          "last_checked": "2026-03-13T01:02:32.855004+00:00"
+          "last_checked": "2026-03-13T06:38:21.839235+00:00"
         },
         {
           "name": "Smyths",
           "status": "unknown",
           "url": "https://www.smythstoys.com/uk/en-gb/search/?text=Mega%20Evolution%20%E2%80%94%20Ascended%20Heroes",
-          "last_checked": "2026-03-13T01:02:32.855009+00:00"
+          "last_checked": "2026-03-13T06:38:21.839241+00:00"
         }
       ]
     },
@@ -33,20 +33,20 @@
         {
           "name": "Zatu",
           "status": "preorder",
-          "url": "https://www.board-game.co.uk/en-us/products/pokemon-tcg-mega-evolution-perfect-order-3-pack?_pos=3&_sid=4e2d04c2b&_ss=r",
-          "last_checked": "2026-03-13T01:02:32.855016+00:00"
+          "url": "https://www.board-game.co.uk/en-us/products/pokemon-tcg-mega-evolution-perfect-order-booster-bundle?_pos=3&_sid=a769c03ec&_ss=r",
+          "last_checked": "2026-03-13T06:38:21.839251+00:00"
         },
         {
           "name": "365 Games",
           "status": "unknown",
           "url": "https://www.365games.co.uk/search?q=Mega%20Evolution%20%E2%80%94%20Perfect%20Order",
-          "last_checked": "2026-03-13T01:02:32.855020+00:00"
+          "last_checked": "2026-03-13T06:38:21.839256+00:00"
         },
         {
           "name": "Smyths",
           "status": "unknown",
           "url": "https://www.smythstoys.com/uk/en-gb/search/?text=Mega%20Evolution%20%E2%80%94%20Perfect%20Order",
-          "last_checked": "2026-03-13T01:02:32.855024+00:00"
+          "last_checked": "2026-03-13T06:38:21.839261+00:00"
         }
       ]
     },
@@ -56,20 +56,20 @@
         {
           "name": "Zatu",
           "status": "preorder",
-          "url": "https://www.board-game.co.uk/en-us/products/pokemon-tcg-world-championship-decks-2025-riley-mckay?_pos=1&_sid=683704efa&_ss=r",
-          "last_checked": "2026-03-13T01:02:32.855031+00:00"
+          "url": "https://www.board-game.co.uk/en-us/products/pokemon-tcg-world-championship-decks-2025-yuya-okita?_pos=1&_sid=d68151f03&_ss=r",
+          "last_checked": "2026-03-13T06:38:21.839268+00:00"
         },
         {
           "name": "365 Games",
           "status": "unknown",
           "url": "https://www.365games.co.uk/search?q=2025%20World%20Championships%20Decks",
-          "last_checked": "2026-03-13T01:02:32.855035+00:00"
+          "last_checked": "2026-03-13T06:38:21.839273+00:00"
         },
         {
           "name": "Smyths",
           "status": "unknown",
           "url": "https://www.smythstoys.com/uk/en-gb/search/?text=2025%20World%20Championships%20Decks",
-          "last_checked": "2026-03-13T01:02:32.855040+00:00"
+          "last_checked": "2026-03-13T06:38:21.839278+00:00"
         }
       ]
     },
@@ -79,20 +79,20 @@
         {
           "name": "Zatu",
           "status": "preorder",
-          "url": "https://www.board-game.co.uk/en-us/products/pokemon-tcg-mega-evolution-ascended-heroes-booster-bundle?_pos=1&_sid=ce65a2164&_ss=r",
-          "last_checked": "2026-03-13T01:02:32.855045+00:00"
+          "url": "https://www.board-game.co.uk/en-us/products/pokemon-tcg-mega-evolution-ascended-heroes-booster-bundle?_pos=1&_sid=9e452f3d6&_ss=r",
+          "last_checked": "2026-03-13T06:38:21.839285+00:00"
         },
         {
           "name": "365 Games",
           "status": "unknown",
           "url": "https://www.365games.co.uk/search?q=Mega%20Evolution%20%E2%80%94%20Ascended%20Heroes%20Booster%20Bundle",
-          "last_checked": "2026-03-13T01:02:32.855048+00:00"
+          "last_checked": "2026-03-13T06:38:21.839289+00:00"
         },
         {
           "name": "Smyths",
           "status": "unknown",
           "url": "https://www.smythstoys.com/uk/en-gb/search/?text=Mega%20Evolution%20%E2%80%94%20Ascended%20Heroes%20Booster%20Bundle",
-          "last_checked": "2026-03-13T01:02:32.855053+00:00"
+          "last_checked": "2026-03-13T06:38:21.839293+00:00"
         }
       ]
     },
@@ -103,19 +103,19 @@
           "name": "Zatu",
           "status": "unknown",
           "url": "https://www.board-game.co.uk/search/?q=Mega%20Evolution%20%E2%80%94%20Chaos%20Rising",
-          "last_checked": "2026-03-13T01:02:32.855058+00:00"
+          "last_checked": "2026-03-13T06:38:21.839299+00:00"
         },
         {
           "name": "365 Games",
           "status": "unknown",
           "url": "https://www.365games.co.uk/search?q=Mega%20Evolution%20%E2%80%94%20Chaos%20Rising",
-          "last_checked": "2026-03-13T01:02:32.855062+00:00"
+          "last_checked": "2026-03-13T06:38:21.839303+00:00"
         },
         {
           "name": "Smyths",
           "status": "unknown",
           "url": "https://www.smythstoys.com/uk/en-gb/search/?text=Mega%20Evolution%20%E2%80%94%20Chaos%20Rising",
-          "last_checked": "2026-03-13T01:02:32.855066+00:00"
+          "last_checked": "2026-03-13T06:38:21.839308+00:00"
         }
       ]
     },
@@ -124,21 +124,21 @@
       "retailers": [
         {
           "name": "Zatu",
-          "status": "unknown",
-          "url": "https://www.board-game.co.uk/search/?q=Abyss%20Eye",
-          "last_checked": "2026-03-13T01:02:32.855070+00:00"
+          "status": "preorder",
+          "url": "https://www.board-game.co.uk/en-us/products/made-in-abyss-the-golden-city-of-the-scorching-sun-maaa-meinya-special-figure-set?_pos=12&_sid=20b5af2f8&_ss=r",
+          "last_checked": "2026-03-13T06:38:21.839313+00:00"
         },
         {
           "name": "365 Games",
           "status": "unknown",
           "url": "https://www.365games.co.uk/search?q=Abyss%20Eye",
-          "last_checked": "2026-03-13T01:02:32.855074+00:00"
+          "last_checked": "2026-03-13T06:38:21.839317+00:00"
         },
         {
           "name": "Smyths",
           "status": "unknown",
           "url": "https://www.smythstoys.com/uk/en-gb/search/?text=Abyss%20Eye",
-          "last_checked": "2026-03-13T01:02:32.855079+00:00"
+          "last_checked": "2026-03-13T06:38:21.839321+00:00"
         }
       ]
     },
@@ -148,20 +148,20 @@
         {
           "name": "Zatu",
           "status": "preorder",
-          "url": "https://www.board-game.co.uk/en-us/products/blade-of-the-ruined-king-sfd-178-221-foil?_pos=5&_sid=e3189af9b&_ss=r",
-          "last_checked": "2026-03-13T01:02:32.855084+00:00"
+          "url": "https://www.board-game.co.uk/en-us/products/blade-of-the-ruined-king-sfd-178-221-foil?_pos=5&_sid=9b241c944&_ss=r",
+          "last_checked": "2026-03-13T06:38:21.839326+00:00"
         },
         {
           "name": "365 Games",
           "status": "unknown",
           "url": "https://www.365games.co.uk/search?q=Storm%20Emeralda",
-          "last_checked": "2026-03-13T01:02:32.855087+00:00"
+          "last_checked": "2026-03-13T06:38:21.839331+00:00"
         },
         {
           "name": "Smyths",
           "status": "unknown",
           "url": "https://www.smythstoys.com/uk/en-gb/search/?text=Storm%20Emeralda",
-          "last_checked": "2026-03-13T01:02:32.855090+00:00"
+          "last_checked": "2026-03-13T06:38:21.839335+00:00"
         }
       ]
     }
