@@ -1,24 +1,50 @@
 -- PokeAlert UK — Supabase Schema
--- Run this in the Supabase SQL Editor to set up the subscribers table.
+-- Run this in the Supabase SQL Editor.
+-- The scraper uses the service_role key (bypasses RLS).
+-- The frontend uses the anon key (read-only via policies below).
 
-create table if not exists subscribers (
-  id                uuid default gen_random_uuid() primary key,
-  email             text unique not null,
-  preferences       jsonb not null default '{"preorder":true,"restock":true,"release_day":true}',
-  subscribed_at     timestamptz default now(),
-  unsubscribe_token uuid default gen_random_uuid() unique not null
+-- ── Tables ────────────────────────────────────────────────────
+
+create table if not exists releases (
+  id           serial primary key,
+  name         text        not null,
+  series       text        not null,
+  release_date date        not null,
+  products     text[]      not null default '{}',
+  featured     boolean     not null default false
 );
 
--- Row Level Security
-alter table subscribers enable row level security;
+create table if not exists stock (
+  id           serial primary key,
+  release_id   integer     not null references releases(id) on delete cascade,
+  retailer     text        not null,
+  status       text        not null,
+  url          text        not null,
+  last_checked timestamptz not null default now(),
 
--- Allow anyone to sign up (INSERT only)
-create policy "public_signup" on subscribers
-  for insert with check (true);
+  unique (release_id, retailer)
+);
 
--- Allow unsubscribe by token (DELETE only — token is an unguessable UUID)
-create policy "unsubscribe_by_token" on subscribers
-  for delete using (true);
+-- ── Indexes ───────────────────────────────────────────────────
 
--- The scraper uses the service_role key which bypasses RLS entirely,
--- so no SELECT policy is needed for the anon role.
+-- Frontend frequently filters/sorts by release date and featured flag
+create index if not exists idx_releases_release_date on releases(release_date);
+create index if not exists idx_releases_featured     on releases(featured) where featured = true;
+
+-- Stock lookups are almost always by release
+create index if not exists idx_stock_release_id on stock(release_id);
+
+-- ── Row Level Security ────────────────────────────────────────
+
+alter table releases enable row level security;
+alter table stock     enable row level security;
+
+-- Anon (frontend) gets read access to both tables
+create policy "anon_read_releases" on releases
+  for select using (true);
+
+create policy "anon_read_stock" on stock
+  for select using (true);
+
+-- All writes come from the scraper via the service_role key,
+-- which bypasses RLS entirely — no write policies needed.

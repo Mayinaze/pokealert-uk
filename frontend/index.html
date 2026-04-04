@@ -33,7 +33,6 @@
     overflow-x: hidden;
   }
 
-  /* Background grid effect */
   body::before {
     content: '';
     position: fixed;
@@ -46,7 +45,7 @@
     z-index: 0;
   }
 
-  .container { max-width: 1200px; margin: 0 auto; padding: 0 24px; position: relative; z-index: 1; }
+  .container { max-width: 900px; margin: 0 auto; padding: 0 24px; position: relative; z-index: 1; }
 
   /* HEADER */
   header {
@@ -208,13 +207,8 @@
   .filter-btn:hover { border-color: var(--yellow-dim); color: var(--text); }
   .filter-btn.active { border-color: var(--yellow); color: var(--yellow); background: rgba(255,215,0,0.08); }
 
-  /* MAIN GRID */
-  .main-grid {
-    display: grid;
-    grid-template-columns: 1fr 320px;
-    gap: 24px;
-    padding: 32px 0;
-  }
+  /* CONTENT */
+  .content { padding: 32px 0 48px; }
 
   /* SECTION HEADERS */
   .section-header {
@@ -249,8 +243,7 @@
     border: 1px solid var(--border);
     border-radius: 8px;
     overflow: hidden;
-    transition: all 0.25s;
-    cursor: pointer;
+    transition: border-color 0.25s, transform 0.25s, box-shadow 0.25s;
     animation: fadeSlideIn 0.4s ease both;
   }
 
@@ -330,12 +323,13 @@
     font-weight: 600;
   }
 
-  .tag-etb { color: #a78bfa; border-color: rgba(167,139,250,0.3); background: rgba(167,139,250,0.08); }
-  .tag-box { color: var(--blue); border-color: rgba(74,144,226,0.3); background: rgba(74,144,226,0.08); }
+  .tag-etb        { color: #a78bfa; border-color: rgba(167,139,250,0.3); background: rgba(167,139,250,0.08); }
+  .tag-box        { color: var(--blue); border-color: rgba(74,144,226,0.3); background: rgba(74,144,226,0.08); }
   .tag-collection { color: var(--green); border-color: rgba(74,226,160,0.3); background: rgba(74,226,160,0.08); }
-  .tag-pack { color: #f97316; border-color: rgba(249,115,22,0.3); background: rgba(249,115,22,0.08); }
+  .tag-pack       { color: #f97316; border-color: rgba(249,115,22,0.3); background: rgba(249,115,22,0.08); }
+  .tag-default    { color: var(--muted); border-color: var(--border); background: var(--surface2); }
 
-  /* RETAILER STATUS ROW */
+  /* RETAILER STATUS PILLS */
   .retailers-row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
 
   .retailer-pill {
@@ -350,7 +344,7 @@
     background: var(--surface2);
     text-decoration: none;
     color: var(--text);
-    transition: all 0.2s;
+    transition: border-color 0.2s, color 0.2s;
     font-weight: 500;
   }
 
@@ -364,146 +358,23 @@
   }
 
   .dot-available { background: var(--green); box-shadow: 0 0 6px var(--green); }
-  .dot-preorder { background: var(--yellow); box-shadow: 0 0 6px var(--yellow); }
-  .dot-soldout { background: var(--red); }
-  .dot-unknown { background: var(--muted); }
+  .dot-preorder  { background: var(--yellow); box-shadow: 0 0 6px var(--yellow); }
+  .dot-soldout   { background: var(--red); }
+  .dot-unknown   { background: var(--muted); }
 
-  /* SIDEBAR */
-  .sidebar { display: flex; flex-direction: column; gap: 20px; }
-
-  .sidebar-card {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    padding: 18px;
-  }
-
-  .sidebar-title {
-    font-family: var(--font-display);
-    font-size: 1rem;
-    letter-spacing: 2px;
-    color: var(--muted);
-    margin-bottom: 14px;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-
-  .sidebar-title::after {
-    content: '';
-    flex: 1;
-    height: 1px;
-    background: var(--border);
-  }
-
-  /* ALERT SETUP */
-  .alert-form { display: flex; flex-direction: column; gap: 10px; }
-
-  .alert-input {
-    background: var(--surface2);
-    border: 1px solid var(--border);
-    border-radius: 4px;
-    padding: 9px 12px;
-    color: var(--text);
+  /* EMPTY / ERROR STATE */
+  .state-msg {
     font-family: var(--font-mono);
-    font-size: 0.78rem;
-    outline: none;
-    transition: border-color 0.2s;
-    width: 100%;
-  }
-
-  .alert-input:focus { border-color: var(--yellow-dim); }
-  .alert-input::placeholder { color: var(--muted); }
-
-  .alert-btn {
-    background: var(--yellow);
-    color: #000;
-    border: none;
-    border-radius: 4px;
-    padding: 10px;
-    font-family: var(--font-display);
-    font-size: 1rem;
-    letter-spacing: 2px;
-    cursor: pointer;
-    transition: all 0.2s;
-    width: 100%;
-  }
-
-  .alert-btn:hover { background: #fff; transform: translateY(-1px); }
-
-  /* RETAILER LIST */
-  .retailer-list { display: flex; flex-direction: column; gap: 8px; }
-
-  .retailer-item {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 8px 10px;
-    border-radius: 4px;
-    background: var(--surface2);
-    border: 1px solid var(--border);
     font-size: 0.8rem;
-  }
-
-  .retailer-name { font-weight: 500; }
-  .retailer-status {
-    font-family: var(--font-mono);
-    font-size: 0.65rem;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-  }
-
-  .status-monitoring { color: var(--green); }
-  .status-soon { color: var(--yellow); }
-
-  /* COUNTDOWN */
-  .countdown-display {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 8px;
-    margin-top: 4px;
-  }
-
-  .countdown-unit {
-    background: var(--surface2);
-    border: 1px solid var(--border);
-    border-radius: 4px;
-    padding: 10px 6px;
+    color: var(--muted);
+    padding: 40px 0;
     text-align: center;
   }
-
-  .countdown-num {
-    font-family: var(--font-display);
-    font-size: 1.6rem;
-    color: var(--yellow);
-    line-height: 1;
-    display: block;
-  }
-
-  .countdown-label {
-    font-family: var(--font-mono);
-    font-size: 0.55rem;
-    color: var(--muted);
-    text-transform: uppercase;
-    letter-spacing: 1px;
-    margin-top: 3px;
-    display: block;
-  }
-
-  .next-release-name {
-    font-size: 0.8rem;
-    color: var(--muted);
-    margin-bottom: 10px;
-    font-weight: 300;
-  }
-
-  .next-release-name strong { color: var(--text); font-weight: 500; }
 
   /* FOOTER */
   footer {
     border-top: 1px solid var(--border);
     padding: 24px 0;
-    margin-top: 20px;
   }
 
   .footer-inner {
@@ -532,7 +403,7 @@
     border: 1px solid var(--border);
     padding: 8px 14px;
     border-radius: 4px;
-    transition: all 0.2s;
+    transition: border-color 0.2s, color 0.2s;
   }
 
   .github-link:hover { border-color: var(--yellow); color: var(--yellow); }
@@ -540,26 +411,14 @@
   /* ANIMATIONS */
   @keyframes fadeSlideIn {
     from { opacity: 0; transform: translateY(8px); }
-    to { opacity: 1; transform: translateY(0); }
-  }
-
-  .pulse {
-    animation: pulse 2s ease-in-out infinite;
-  }
-
-  @keyframes pulse {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.5; }
+    to   { opacity: 1; transform: translateY(0); }
   }
 
   /* RESPONSIVE */
-  @media (max-width: 768px) {
-    .main-grid { grid-template-columns: 1fr; }
+  @media (max-width: 600px) {
     .hero-stats { gap: 20px; }
-    .sidebar { order: -1; }
+    .hero-strip::after { display: none; }
   }
-
-  .hidden { display: none !important; }
 </style>
 </head>
 <body>
@@ -571,8 +430,8 @@
       <span class="logo-badge">UK</span>
     </div>
     <div class="header-meta">
-      <div>Last updated: <span id="last-updated">—</span></div>
-      <div>Tracking <span>7</span> UK retailers</div>
+      <div>Last checked: <span id="last-updated">—</span></div>
+      <div>UK retailer stock tracker</div>
     </div>
   </div>
 </header>
@@ -583,15 +442,15 @@
     <p class="hero-sub">UK release dates, pre-order availability, and retailer stock — all in one place. Built for collectors.</p>
     <div class="hero-stats">
       <div class="stat">
-        <span class="stat-num" id="stat-upcoming">8</span>
-        <span class="stat-label">Upcoming Sets</span>
+        <span class="stat-num" id="stat-sets">—</span>
+        <span class="stat-label">Sets Tracked</span>
       </div>
       <div class="stat">
-        <span class="stat-num" id="stat-preorder">5</span>
+        <span class="stat-num" id="stat-preorders">—</span>
         <span class="stat-label">Open Pre-orders</span>
       </div>
       <div class="stat">
-        <span class="stat-num">7</span>
+        <span class="stat-num" id="stat-retailers">—</span>
         <span class="stat-label">Retailers Tracked</span>
       </div>
     </div>
@@ -599,113 +458,23 @@
 </div>
 
 <div class="container">
-
   <div class="filters-bar">
     <span class="filter-label">Filter:</span>
-    <button class="filter-btn active" data-filter="all">All Products</button>
-    <button class="filter-btn" data-filter="etb">Elite Trainer Box</button>
+    <button class="filter-btn active" data-filter="all">All</button>
+    <button class="filter-btn" data-filter="etb">ETB</button>
     <button class="filter-btn" data-filter="box">Booster Box</button>
-    <button class="filter-btn" data-filter="collection">Collection Sets</button>
-    <button class="filter-btn" data-filter="pack">Booster Packs</button>
+    <button class="filter-btn" data-filter="collection">Collection</button>
+    <button class="filter-btn" data-filter="pack">Booster Pack</button>
   </div>
 
-  <div class="main-grid">
-
-    <!-- RELEASES COLUMN -->
-    <div>
-      <div class="section-header">
-        <h2 class="section-title">UPCOMING RELEASES</h2>
-        <span class="section-count" id="visible-count">8 sets</span>
-      </div>
-
-      <div class="releases-list" id="releases-list">
-        <!-- Populated by JS -->
-      </div>
+  <div class="content">
+    <div class="section-header">
+      <h2 class="section-title">UPCOMING RELEASES</h2>
+      <span class="section-count" id="visible-count">—</span>
     </div>
-
-    <!-- SIDEBAR -->
-    <aside class="sidebar">
-
-      <!-- COUNTDOWN -->
-      <div class="sidebar-card">
-        <div class="sidebar-title">Next Drop</div>
-        <p class="next-release-name">Counting down to <strong id="next-name">—</strong></p>
-        <div class="countdown-display">
-          <div class="countdown-unit">
-            <span class="countdown-num" id="cd-days">00</span>
-            <span class="countdown-label">Days</span>
-          </div>
-          <div class="countdown-unit">
-            <span class="countdown-num" id="cd-hours">00</span>
-            <span class="countdown-label">Hrs</span>
-          </div>
-          <div class="countdown-unit">
-            <span class="countdown-num" id="cd-mins">00</span>
-            <span class="countdown-label">Min</span>
-          </div>
-          <div class="countdown-unit">
-            <span class="countdown-num pulse" id="cd-secs">00</span>
-            <span class="countdown-label">Sec</span>
-          </div>
-        </div>
-      </div>
-
-      <!-- ALERT SIGNUP -->
-      <div class="sidebar-card">
-        <div class="sidebar-title">Get Alerts</div>
-        <div class="alert-form">
-          <input class="alert-input" type="email" placeholder="your@email.com" id="alert-email" />
-          <select class="alert-input" id="alert-type">
-            <option value="">— Alert me when —</option>
-            <option value='{"preorder":true,"restock":true,"release_day":true}'>All alerts (recommended)</option>
-            <option value='{"preorder":true,"restock":false,"release_day":false}'>Pre-orders only</option>
-            <option value='{"preorder":false,"restock":true,"release_day":false}'>Restocks only</option>
-            <option value='{"preorder":false,"restock":false,"release_day":true}'>Release day only</option>
-          </select>
-          <p style="font-family:var(--font-mono);font-size:0.65rem;color:var(--muted);margin:0 0 10px;line-height:1.5;">
-            We'll email you the moment pre-orders open, when stock returns, and on release day.
-          </p>
-          <button class="alert-btn" onclick="setupAlert()">SET ALERT</button>
-          <div id="alert-confirm" style="font-family:var(--font-mono);font-size:0.7rem;color:var(--green);display:none;text-align:center;margin-top:10px;line-height:1.6;"></div>
-        </div>
-      </div>
-
-      <!-- RETAILERS -->
-      <div class="sidebar-card">
-        <div class="sidebar-title">UK Retailers</div>
-        <div class="retailer-list">
-          <div class="retailer-item">
-            <span class="retailer-name">Pokémon Center UK</span>
-            <span class="retailer-status status-monitoring">● Monitoring</span>
-          </div>
-          <div class="retailer-item">
-            <span class="retailer-name">Amazon UK</span>
-            <span class="retailer-status status-monitoring">● Monitoring</span>
-          </div>
-          <div class="retailer-item">
-            <span class="retailer-name">Smyths Toys</span>
-            <span class="retailer-status status-monitoring">● Monitoring</span>
-          </div>
-          <div class="retailer-item">
-            <span class="retailer-name">Argos</span>
-            <span class="retailer-status status-monitoring">● Monitoring</span>
-          </div>
-          <div class="retailer-item">
-            <span class="retailer-name">Zatu Games</span>
-            <span class="retailer-status status-monitoring">● Monitoring</span>
-          </div>
-          <div class="retailer-item">
-            <span class="retailer-name">365 Games</span>
-            <span class="retailer-status status-monitoring">● Monitoring</span>
-          </div>
-          <div class="retailer-item">
-            <span class="retailer-name">GameStop UK</span>
-            <span class="retailer-status status-soon">◐ Adding Soon</span>
-          </div>
-        </div>
-      </div>
-
-    </aside>
+    <div class="releases-list" id="releases-list">
+      <p class="state-msg">Loading...</p>
+    </div>
   </div>
 </div>
 
@@ -713,7 +482,7 @@
   <div class="container footer-inner">
     <div class="footer-text">
       PokeAlert UK — Fan-made tracker. Not affiliated with Nintendo, Game Freak or The Pokémon Company.<br>
-      Pre-order links and availability are checked periodically. Always verify on retailer sites.
+      Stock availability is checked periodically. Always verify on retailer sites before purchasing.
     </div>
     <a href="https://github.com" class="github-link" target="_blank">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.374 0 0 5.373 0 12c0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23A11.509 11.509 0 0112 5.803c1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576C20.566 21.797 24 17.3 24 12c0-6.627-5.373-12-12-12z"/></svg>
@@ -725,78 +494,110 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script src="config.js"></script>
 <script>
-// ============================================================
-// DATA — loaded from data/releases.json + data/stock.json
-// ============================================================
-let releases = [];
+// ── Tag config ────────────────────────────────────────────────
+const TAG_MAP = {
+  etb:        { label: 'ETB',          cls: 'tag-etb' },
+  box:        { label: 'Booster Box',  cls: 'tag-box' },
+  collection: { label: 'Collection',  cls: 'tag-collection' },
+  pack:       { label: 'Booster Pack', cls: 'tag-pack' },
+};
 
-const PRODUCT_MAP = { booster_box: 'box', booster_pack: 'pack' };
+// ── Status config ─────────────────────────────────────────────
+const STATUS_MAP = {
+  available: { dot: 'dot-available', label: 'Available' },
+  preorder:  { dot: 'dot-preorder',  label: 'Pre-order' },
+  soldout:   { dot: 'dot-soldout',   label: 'Sold Out'  },
+  unknown:   { dot: 'dot-unknown',   label: 'Check Site'},
+};
 
+// ── State ─────────────────────────────────────────────────────
+let releases = [];   // enriched release objects
+let activeFilter = 'all';
+
+// ── Supabase ──────────────────────────────────────────────────
 async function loadData() {
-  const [releasesRes, stockRes] = await Promise.allSettled([
-    fetch('./data/releases.json'),
-    fetch('./data/stock.json')
-  ]);
+  const db = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-  const rawReleases = releasesRes.status === 'fulfilled' && releasesRes.value.ok
-    ? await releasesRes.value.json() : [];
-  const stockData = stockRes.status === 'fulfilled' && stockRes.value.ok
-    ? (await stockRes.value.json()).stock : [];
+  const [{ data: releaseRows, error: relErr }, { data: stockRows, error: stockErr }] =
+    await Promise.all([
+      db.table('releases').select('*').order('release_date', { ascending: true }),
+      db.table('stock').select('*'),
+    ]);
 
-  releases = rawReleases.map(r => {
-    const stock = stockData.find(s => s.release_id === r.id);
-    return {
-      id: r.id,
-      name: r.name,
-      series: r.series,
-      releaseDate: new Date(r.release_date),
-      products: r.products.map(p => PRODUCT_MAP[p] || p),
-      retailers: stock ? stock.retailers : [],
-      featured: r.featured
-    };
-  });
+  if (relErr || stockErr) {
+    document.getElementById('releases-list').innerHTML =
+      '<p class="state-msg">Failed to load data. Please try again later.</p>';
+    console.error('Supabase error:', relErr || stockErr);
+    return;
+  }
 
-  renderAll();
-  updateCountdown();
-  setInterval(updateCountdown, 1000);
+  // Group stock rows by release_id
+  const stockByRelease = {};
+  for (const row of stockRows) {
+    (stockByRelease[row.release_id] ??= []).push(row);
+  }
+
+  releases = releaseRows.map(r => ({
+    id:          r.id,
+    name:        r.name,
+    series:      r.series,
+    releaseDate: new Date(r.release_date),
+    products:    r.products ?? [],
+    featured:    r.featured ?? false,
+    retailers:   (stockByRelease[r.id] ?? []).map(s => ({
+      name:   s.retailer,
+      status: s.status,
+      url:    s.url,
+    })),
+  }));
+
+  // Header: most recent last_checked across all stock rows
+  const latest = stockRows.reduce((max, r) => r.last_checked > max ? r.last_checked : max, '');
+  if (latest) {
+    const d = new Date(latest);
+    document.getElementById('last-updated').textContent =
+      d.toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+  }
+
+  // Hero stats
+  const distinctRetailers = new Set(stockRows.map(r => r.retailer)).size;
+  const preorderCount = releases.filter(r => r.retailers.some(ret => ret.status === 'preorder')).length;
+  document.getElementById('stat-sets').textContent      = releases.length;
+  document.getElementById('stat-preorders').textContent = preorderCount;
+  document.getElementById('stat-retailers').textContent = distinctRetailers || '—';
+
+  renderList();
 }
 
-// ============================================================
-// RENDER
-// ============================================================
-const tagMap = {
-  etb:        { label: "ETB",        cls: "tag-etb" },
-  box:        { label: "Booster Box", cls: "tag-box" },
-  collection: { label: "Collection", cls: "tag-collection" },
-  pack:       { label: "Booster Pack", cls: "tag-pack" }
-};
-
-const statusMap = {
-  available: { dot: "dot-available", label: "Available" },
-  preorder:  { dot: "dot-preorder",  label: "Pre-order" },
-  soldout:   { dot: "dot-soldout",   label: "Sold Out" },
-  unknown:   { dot: "dot-unknown",   label: "Check Site" }
-};
-
+// ── Render ────────────────────────────────────────────────────
 function formatDate(d) {
-  const day = d.getDate();
-  const month = d.toLocaleString('en-GB', { month: 'short' }).toUpperCase();
-  const year = d.getFullYear();
-  return { day, month, year };
+  return {
+    day:   d.getDate(),
+    month: d.toLocaleString('en-GB', { month: 'short' }).toUpperCase(),
+    year:  d.getFullYear(),
+  };
 }
 
-function renderCard(r) {
-  const { day, month, year } = formatDate(r.releaseDate);
-  const tags = r.products.map(p =>
-    `<span class="tag ${tagMap[p].cls}">${tagMap[p].label}</span>`
-  ).join('');
+function tagHtml(product) {
+  const t = TAG_MAP[product];
+  if (t) return `<span class="tag ${t.cls}">${t.label}</span>`;
+  // Fallback: humanise the raw string
+  const label = product.replace(/_/g, ' ').toUpperCase();
+  return `<span class="tag tag-default">${label}</span>`;
+}
 
-  const retailers = r.retailers.map(ret => {
-    const s = statusMap[ret.status] || statusMap.unknown;
-    return `<a href="${ret.url}" target="_blank" class="retailer-pill">
-      <span class="dot ${s.dot}"></span>${ret.name} — ${s.label}
-    </a>`;
-  }).join('');
+function retailerPillHtml(ret) {
+  const s = STATUS_MAP[ret.status] ?? STATUS_MAP.unknown;
+  const safeUrl = ret.url ? encodeURI(ret.url) : '#';
+  return `<a href="${safeUrl}" target="_blank" rel="noopener" class="retailer-pill">
+    <span class="dot ${s.dot}"></span>${ret.name} — ${s.label}
+  </a>`;
+}
+
+function cardHtml(r) {
+  const { day, month, year } = formatDate(r.releaseDate);
+  const tags      = r.products.map(tagHtml).join('');
+  const retailers = r.retailers.map(retailerPillHtml).join('');
 
   return `
     <div class="release-card ${r.featured ? 'featured' : ''}" data-products="${r.products.join(' ')}">
@@ -811,127 +612,39 @@ function renderCard(r) {
             <div class="date-month">${month} ${year}</div>
           </div>
         </div>
-        <div class="card-tags">${tags}</div>
-        <div class="retailers-row">${retailers}</div>
+        ${tags      ? `<div class="card-tags">${tags}</div>` : ''}
+        ${retailers ? `<div class="retailers-row">${retailers}</div>` : ''}
       </div>
-    </div>
-  `;
+    </div>`;
 }
 
-function renderAll(filter = 'all') {
-  const list = document.getElementById('releases-list');
-  const filtered = filter === 'all'
+function renderList() {
+  const filtered = activeFilter === 'all'
     ? releases
-    : releases.filter(r => r.products.includes(filter));
+    : releases.filter(r => r.products.includes(activeFilter));
 
-  list.innerHTML = filtered.map(renderCard).join('');
-  document.getElementById('visible-count').textContent = `${filtered.length} set${filtered.length !== 1 ? 's' : ''}`;
-  document.getElementById('stat-upcoming').textContent = releases.length;
-  const preorderCount = releases.filter(r => r.retailers.some(ret => ret.status === 'preorder')).length;
-  document.getElementById('stat-preorder').textContent = preorderCount;
+  const list = document.getElementById('releases-list');
+  if (filtered.length === 0) {
+    list.innerHTML = '<p class="state-msg">No releases found.</p>';
+  } else {
+    list.innerHTML = filtered.map(cardHtml).join('');
+  }
+
+  const n = filtered.length;
+  document.getElementById('visible-count').textContent = `${n} set${n !== 1 ? 's' : ''}`;
 }
 
-// ============================================================
-// FILTERS
-// ============================================================
+// ── Filters ───────────────────────────────────────────────────
 document.querySelectorAll('.filter-btn').forEach(btn => {
   btn.addEventListener('click', () => {
     document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
-    renderAll(btn.dataset.filter);
+    activeFilter = btn.dataset.filter;
+    renderList();
   });
 });
 
-// ============================================================
-// COUNTDOWN
-// ============================================================
-function updateCountdown() {
-  const sorted = [...releases].sort((a, b) => a.releaseDate - b.releaseDate);
-  const next = sorted.find(r => r.releaseDate > new Date()) || sorted[0];
-  document.getElementById('next-name').textContent = next.name;
-
-  const diff = next.releaseDate - new Date();
-  if (diff <= 0) {
-    ['cd-days','cd-hours','cd-mins','cd-secs'].forEach(id => document.getElementById(id).textContent = '00');
-    return;
-  }
-
-  const days  = Math.floor(diff / 86400000);
-  const hours = Math.floor((diff % 86400000) / 3600000);
-  const mins  = Math.floor((diff % 3600000) / 60000);
-  const secs  = Math.floor((diff % 60000) / 1000);
-
-  document.getElementById('cd-days').textContent  = String(days).padStart(2,'0');
-  document.getElementById('cd-hours').textContent = String(hours).padStart(2,'0');
-  document.getElementById('cd-mins').textContent  = String(mins).padStart(2,'0');
-  document.getElementById('cd-secs').textContent  = String(secs).padStart(2,'0');
-}
-
-// ============================================================
-// ALERT SETUP
-// ============================================================
-async function setupAlert() {
-  const emailEl   = document.getElementById('alert-email');
-  const typeEl    = document.getElementById('alert-type');
-  const confirmEl = document.getElementById('alert-confirm');
-  const btn       = document.querySelector('.alert-btn');
-
-  const email = emailEl.value.trim();
-  const typeVal = typeEl.value;
-  if (!email || !typeVal) return;
-
-  btn.disabled = true;
-  btn.textContent = 'SETTING...';
-  confirmEl.style.display = 'none';
-
-  let preferences;
-  try { preferences = JSON.parse(typeVal); }
-  catch { preferences = { preorder: true, restock: true, release_day: true }; }
-
-  const unsubscribe_token = crypto.randomUUID();
-
-  try {
-    if (typeof SUPABASE_URL === 'undefined' || SUPABASE_URL.includes('YOUR_PROJECT')) {
-      throw new Error('Supabase not configured');
-    }
-    const { createClient } = supabase;
-    const client = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
-    const { error } = await client.from('subscribers').insert({
-      email,
-      preferences,
-      unsubscribe_token
-    });
-
-    if (error && error.code === '23505') {
-      // Duplicate email — already subscribed
-      confirmEl.style.color = 'var(--green)';
-      confirmEl.innerHTML = '✓ You\'re already signed up!';
-    } else if (error) {
-      throw error;
-    } else {
-      confirmEl.style.color = 'var(--green)';
-      confirmEl.innerHTML = '✓ Check your inbox for a confirmation email.';
-      emailEl.value = '';
-      typeEl.value  = '';
-    }
-  } catch (e) {
-    confirmEl.style.color = 'var(--red)';
-    confirmEl.innerHTML = '✗ Something went wrong — try again.';
-    console.error('Signup error:', e);
-  }
-
-  confirmEl.style.display = 'block';
-  btn.disabled = false;
-  btn.textContent = 'SET ALERT';
-}
-
-// ============================================================
-// INIT
-// ============================================================
-document.getElementById('last-updated').textContent =
-  new Date().toLocaleString('en-GB', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' });
-
+// ── Init ──────────────────────────────────────────────────────
 loadData();
 </script>
 </body>
