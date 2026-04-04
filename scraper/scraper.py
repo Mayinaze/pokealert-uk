@@ -7,7 +7,7 @@ upserts stock per product, and sends Pushover alerts on status changes.
 Usage:
     python scraper.py
 
-Scheduled via GitHub Actions every 6 hours.
+Scheduled via GitHub Actions every 24 hours.
 """
 
 import os
@@ -24,6 +24,7 @@ from retailers.smyths import scrape_smyths
 # from retailers.pokemon_center import scrape_pc    # TODO
 
 from pushover import notify
+from discover_sets import discover_and_insert
 
 load_dotenv()
 
@@ -178,6 +179,10 @@ def main():
     log.info("=== PokeAlert UK Scraper Starting ===")
 
     db = get_supabase()
+
+    # Auto-discover new sets from Bulbapedia before scraping stock.
+    # If new sets were added, re-fetch so they're included in this run.
+    new_sets = discover_and_insert(db)
 
     releases            = fetch_releases(db)
     products_by_release = fetch_products(db)
