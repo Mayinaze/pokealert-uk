@@ -11,9 +11,6 @@ jobs:
   scrape:
     runs-on: ubuntu-latest
 
-    permissions:
-      contents: write   # Needed to commit updated stock.json back to repo
-
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
@@ -24,24 +21,13 @@ jobs:
           python-version: '3.11'
 
       - name: Install dependencies
-        run: |
-          cd scraper
-          pip install -r requirements.txt
+        run: pip install -r scraper/requirements.txt
 
       - name: Run scraper
         env:
-          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
-          ALERT_FROM_EMAIL: ${{ secrets.ALERT_FROM_EMAIL }}
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
-          SITE_URL: ${{ secrets.SITE_URL }}
-        run: |
-          python scraper/scraper.py
-
-      - name: Commit updated stock data
-        run: |
-          git config --local user.email "action@github.com"
-          git config --local user.name "PokeAlert Bot"
-          git add frontend/data/stock.json
-          git diff --staged --quiet || git commit -m "chore: update stock data [$(date -u '+%Y-%m-%d %H:%M UTC')]"
-          git push
+          PUSHOVER_TOKEN: ${{ secrets.PUSHOVER_TOKEN }}
+          PUSHOVER_USER: ${{ secrets.PUSHOVER_USER }}
+        working-directory: scraper
+        run: python scraper.py
