@@ -827,9 +827,9 @@ async function loadData() {
   const db = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
   const [relRes, prodRes, stockRes] = await Promise.all([
-    db.table('releases').select('*').order('release_date', { ascending: true, nullsFirst: false }),
-    db.table('products').select('*'),
-    db.table('stock').select('*'),
+    db.from('releases').select('*').order('release_date', { ascending: true, nullsFirst: false }),
+    db.from('products').select('*'),
+    db.from('stock').select('*'),
   ]);
 
   if (relRes.error || prodRes.error || stockRes.error) {
