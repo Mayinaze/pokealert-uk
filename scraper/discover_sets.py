@@ -27,6 +27,8 @@ import requests
 from bs4 import BeautifulSoup
 from supabase import Client
 
+from tcg_images import fetch_logo_map, match_logo
+
 log = logging.getLogger(__name__)
 
 BULBAPEDIA_URL = (
@@ -188,11 +190,19 @@ def _existing_names(db: Client) -> set[str]:
     return {row["name"].lower() for row in resp.data}
 
 
-def _insert_set(db: Client, name: str, series: str, release_date: str | None) -> int:
+def _insert_set(
+    db: Client,
+    name: str,
+    series: str,
+    release_date: str | None,
+    image_url: str | None = None,
+) -> int:
     """Insert a release row and return its new id."""
-    row = {"name": name, "series": series, "featured": False}
+    row: dict = {"name": name, "series": series, "featured": False}
     if release_date:
         row["release_date"] = release_date
+    if image_url:
+        row["image_url"] = image_url
     resp = db.table("releases").insert(row).execute()
     return resp.data[0]["id"]
 
@@ -226,6 +236,10 @@ def discover_and_insert(db: Client) -> int:
         return 0
 
     existing = _existing_names(db)
+
+    # Fetch logo map once so we can store image_url on every new set
+    logo_map = fetch_logo_map()
+
     inserted = 0
 
     for s in scraped:
@@ -233,9 +247,10 @@ def discover_and_insert(db: Client) -> int:
             log.debug(f"  Already known: {s['name']}")
             continue
 
-        log.info(f"  New set found: {s['name']} ({s['release_date'] or 'TBD'})")
+        image_url = match_logo(s["name"], logo_map) if logo_map else None
+        log.info(f"  New set found: {s['name']} ({s['release_date'] or 'TBD'}) logo={'yes' if image_url else 'no'}")
         try:
-            release_id = _insert_set(db, s["name"], s["series"], s["release_date"])
+            release_id = _insert_set(db, s["name"], s["series"], s["release_date"], image_url)
             _insert_baseline_products(db, release_id, s["name"])
             log.info(f"  Inserted: {s['name']} (id={release_id})")
             inserted += 1

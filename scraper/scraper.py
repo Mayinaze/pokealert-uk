@@ -25,6 +25,7 @@ from retailers.smyths import scrape_smyths
 
 from pushover import notify
 from discover_sets import discover_and_insert
+from backfill_images import backfill as backfill_images
 
 load_dotenv()
 
@@ -180,9 +181,12 @@ def main():
 
     db = get_supabase()
 
-    # Auto-discover new sets from Bulbapedia before scraping stock.
-    # If new sets were added, re-fetch so they're included in this run.
+    # 1. Auto-discover new sets from Bulbapedia.
     new_sets = discover_and_insert(db)
+
+    # 2. Backfill image_url for any releases still missing one
+    #    (covers existing seed data; new sets get their logo during discovery).
+    backfill_images(db)
 
     releases            = fetch_releases(db)
     products_by_release = fetch_products(db)

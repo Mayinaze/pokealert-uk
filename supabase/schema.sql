@@ -19,6 +19,10 @@
 -- For fresh installs: run this file as-is.
 -- ====================================
 
+-- ── Migration: add image_url (run once on existing installs) ──
+--
+--   alter table releases add column if not exists image_url text;
+--
 -- ── Tables ────────────────────────────────────────────────────
 
 create table if not exists releases (
@@ -26,7 +30,8 @@ create table if not exists releases (
   name         text        not null,
   series       text        not null,
   release_date date,                        -- nullable: null = TBC
-  featured     boolean     not null default false
+  featured     boolean     not null default false,
+  image_url    text                         -- set logo from Pokémon TCG API; null = not yet fetched
 );
 
 -- Product types within a release.

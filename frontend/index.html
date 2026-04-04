@@ -303,6 +303,28 @@
   .pill-soldout   { color: var(--red);    border-color: rgba(226,74,74,0.4);   background: rgba(226,74,74,0.08); }
   .pill-unknown   { color: var(--muted);  border-color: var(--border);         background: var(--surface2); }
 
+  /* ── Set logo ──────────────────────────────────────────────── */
+  .card-logo {
+    margin-bottom: 14px;
+    height: 48px;
+    display: flex;
+    align-items: center;
+  }
+
+  .card-logo img {
+    max-height: 48px;
+    max-width: 200px;
+    width: auto;
+    object-fit: contain;
+    object-position: left center;
+    display: block;
+  }
+
+  @media (max-width: 600px) {
+    .card-logo { height: 36px; }
+    .card-logo img { max-height: 36px; max-width: 160px; }
+  }
+
   /* ── Level 1: Release cards ────────────────────────────────── */
   .releases-list { display: flex; flex-direction: column; gap: 12px; }
 
@@ -988,9 +1010,17 @@ function setCardHtml(r) {
     ? `<span class="product-count-badge">${products.length} product${products.length !== 1 ? 's' : ''}</span>`
     : '';
 
+  const logoHtml = r.image_url
+    ? `<div class="card-logo">
+         <img src="${r.image_url}" alt="${r.name} logo" loading="lazy"
+              onerror="this.parentElement.style.display='none'">
+       </div>`
+    : '';
+
   return `
     <div class="release-card${r.featured ? ' featured' : ''}" onclick="goToSet(${r.id})">
       <div class="card-body">
+        ${logoHtml}
         <div class="card-top">
           <div>
             <div class="card-name">${r.name}</div>
