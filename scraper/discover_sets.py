@@ -33,7 +33,7 @@ log = logging.getLogger(__name__)
 
 BULBAPEDIA_URL = (
     "https://bulbapedia.bulbagarden.net/wiki/"
-    "Pok%C3%A9mon_Trading_Card_Game_expansions"
+    "List_of_Pok%C3%A9mon_Trading_Card_Game_expansions"
 )
 
 HEADERS = {
