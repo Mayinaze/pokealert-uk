@@ -20,7 +20,13 @@ from supabase import create_client, Client
 from retailers.zatu import scrape_zatu
 from retailers.games365 import scrape_365games
 from retailers.smyths import scrape_smyths
-# from retailers.amazon import scrape_amazon        # TODO
+from retailers.argos import scrape_argos
+from retailers.game import scrape_game
+from retailers.forbidden_planet import scrape_forbidden_planet
+from retailers.very import scrape_very
+from retailers.total_cards import scrape_total_cards
+from retailers.magic_madhouse import scrape_magic_madhouse
+from retailers.amazon import scrape_amazon
 # from retailers.pokemon_center import scrape_pc    # TODO
 
 from pushover import notify
@@ -36,9 +42,18 @@ logging.basicConfig(
 log = logging.getLogger(__name__)
 
 SCRAPERS = [
-    ("Zatu",      scrape_zatu),
-    ("365 Games", scrape_365games),
-    ("Smyths",    scrape_smyths),
+    ("Zatu",             scrape_zatu),
+    ("365 Games",        scrape_365games),
+    ("Smyths",           scrape_smyths),
+    ("Argos",            scrape_argos),
+    ("GAME",             scrape_game),
+    ("Forbidden Planet", scrape_forbidden_planet),
+    ("Very",             scrape_very),
+    ("Total Cards",      scrape_total_cards),
+    ("Magic Madhouse",   scrape_magic_madhouse),
+    # Amazon: included for visibility; frequently returns 'unknown' due to
+    # bot detection. Disable here if causing CI failures.
+    ("Amazon",           scrape_amazon),
 ]
 
 
