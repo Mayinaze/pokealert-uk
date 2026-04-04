@@ -5,8 +5,12 @@ Smyths is a major UK toy retailer stocking Pokémon TCG.
 Their site is slightly more guarded but workable with the right headers.
 
 Strategy:
-- Search Smyths for each set name
+- Search by product name (e.g. "Prismatic Evolutions Elite Trainer Box")
 - Parse product page for availability indicators
+
+NOTE: Smyths may serve a challenge page or bot check.
+If this returns 'unknown' consistently, consider using
+Playwright or Selenium for JS rendering.
 """
 
 import time
@@ -35,10 +39,6 @@ def get_status_from_page(url: str) -> str:
     """
     Fetch a Smyths product page and determine stock status.
     Returns: 'available' | 'preorder' | 'soldout' | 'unknown'
-    
-    NOTE: Smyths may serve a challenge page or bot check.
-    If this returns 'unknown' consistently, consider using
-    Playwright or Selenium for JS rendering (see docs/adding-retailers.md).
     """
     try:
         resp = requests.get(url, headers=HEADERS, timeout=15)
@@ -64,20 +64,17 @@ def get_status_from_page(url: str) -> str:
 def search_smyths(query: str) -> str | None:
     """Search Smyths and return URL of best matching product."""
     try:
-        # Smyths uses a query format like: pokemon+cards+scarlet
         clean_query = query.replace("—", "").replace("  ", " ").strip()
         url = SEARCH_URL.format(query=requests.utils.quote(clean_query))
         resp = requests.get(url, headers=HEADERS, timeout=15)
         resp.raise_for_status()
         soup = BeautifulSoup(resp.text, "html.parser")
 
-        # Smyths product links typically have /p/ in the URL
         for a in soup.find_all("a", href=True):
             href = a["href"]
             if "/p/" in href and "pokemon" in href.lower():
                 return href if href.startswith("http") else f"{BASE_URL}{href}"
 
-        # Fallback: first product result regardless
         for a in soup.find_all("a", href=True):
             href = a["href"]
             if "/p/" in href:
@@ -90,32 +87,32 @@ def search_smyths(query: str) -> str | None:
         return None
 
 
-def scrape_smyths(releases: list[dict]) -> dict[int, dict]:
+def scrape_smyths(products: list[dict]) -> dict[int, dict]:
     """
-    Main entry point. Accepts list of release dicts from releases.json.
-    Returns: { release_id: { "status": str, "url": str } }
+    Main entry point.
+    products: list of product dicts (id, release_id, type, name, sort_order)
+    Returns: { product_id: { "status": str, "url": str } }
     """
     results = {}
 
-    for release in releases:
-        name = release["name"]
-        rid  = release["id"]
+    for product in products:
+        pid  = product["id"]
+        name = product["name"]
 
         log.info(f"  Smyths: searching for '{name}'")
         url = search_smyths(name)
 
         if not url:
             log.info(f"  Smyths: no result found for '{name}'")
-            results[rid] = {
+            results[pid] = {
                 "status": "unknown",
-                "url": f"{BASE_URL}/uk/en-gb/search/?text={requests.utils.quote(name)}"
+                "url": SEARCH_URL.format(query=requests.utils.quote(name)),
             }
         else:
             status = get_status_from_page(url)
             log.info(f"  Smyths: '{name}' → {status} ({url})")
-            results[rid] = {"status": status, "url": url}
+            results[pid] = {"status": status, "url": url}
 
-        # Smyths can be slow — give it more breathing room
         time.sleep(3)
 
     return results

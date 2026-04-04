@@ -5,7 +5,7 @@
 Their pages are fairly clean and scraper-friendly.
 
 Strategy:
-- Construct a search URL and find the product
+- Search by product name (e.g. "Prismatic Evolutions Elite Trainer Box")
 - Check for stock/pre-order indicators on the product page
 """
 
@@ -42,7 +42,6 @@ def get_status_from_page(url: str) -> str:
 
         page_text = soup.get_text().lower()
 
-        # Check for explicit status indicators
         if "pre-order" in page_text or "preorder" in page_text:
             return "preorder"
         if "sold out" in page_text or "out of stock" in page_text:
@@ -50,7 +49,6 @@ def get_status_from_page(url: str) -> str:
         if "add to basket" in page_text or "add to cart" in page_text or "in stock" in page_text:
             return "available"
 
-        # Check button state
         btn = soup.find("button", {"type": "submit"})
         if btn:
             btn_text = btn.get_text(strip=True).lower()
@@ -76,10 +74,8 @@ def search_365games(query: str) -> str | None:
         resp.raise_for_status()
         soup = BeautifulSoup(resp.text, "html.parser")
 
-        # Find first product result link
         for a in soup.find_all("a", href=True):
             href = a["href"]
-            # 365 Games product URLs typically contain /products/
             if "/products/" in href:
                 return href if href.startswith("http") else f"{BASE_URL}{href}"
 
@@ -90,30 +86,31 @@ def search_365games(query: str) -> str | None:
         return None
 
 
-def scrape_365games(releases: list[dict]) -> dict[int, dict]:
+def scrape_365games(products: list[dict]) -> dict[int, dict]:
     """
-    Main entry point. Accepts list of release dicts from releases.json.
-    Returns: { release_id: { "status": str, "url": str } }
+    Main entry point.
+    products: list of product dicts (id, release_id, type, name, sort_order)
+    Returns: { product_id: { "status": str, "url": str } }
     """
     results = {}
 
-    for release in releases:
-        name = release["name"]
-        rid  = release["id"]
+    for product in products:
+        pid  = product["id"]
+        name = product["name"]
 
         log.info(f"  365 Games: searching for '{name}'")
         url = search_365games(name)
 
         if not url:
             log.info(f"  365 Games: no result found for '{name}'")
-            results[rid] = {
+            results[pid] = {
                 "status": "unknown",
-                "url": SEARCH_URL.format(query=requests.utils.quote(name))
+                "url": SEARCH_URL.format(query=requests.utils.quote(name)),
             }
         else:
             status = get_status_from_page(url)
             log.info(f"  365 Games: '{name}' → {status} ({url})")
-            results[rid] = {"status": status, "url": url}
+            results[pid] = {"status": status, "url": url}
 
         time.sleep(2)
 

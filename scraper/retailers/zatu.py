@@ -5,7 +5,7 @@ Zatu is one of the more scraper-friendly UK retailers.
 They have clean product pages with visible stock status.
 
 Strategy:
-- Search Zatu for each release name
+- Search Zatu by product name (e.g. "Prismatic Evolutions Elite Trainer Box")
 - Check the product page for "Add to Basket" / "Pre-order" / "Out of Stock"
 """
 
@@ -16,7 +16,7 @@ from bs4 import BeautifulSoup
 
 log = logging.getLogger(__name__)
 
-BASE_URL  = "https://www.board-game.co.uk"
+BASE_URL   = "https://www.board-game.co.uk"
 SEARCH_URL = f"{BASE_URL}/search/?q={{query}}"
 
 HEADERS = {
@@ -39,8 +39,6 @@ def get_status_from_page(url: str) -> str:
         resp.raise_for_status()
         soup = BeautifulSoup(resp.text, "html.parser")
 
-        # Zatu uses button text to indicate status
-        # Look for the primary CTA button
         btn = soup.find("button", class_=lambda c: c and "add-to-basket" in c.lower())
         if not btn:
             btn = soup.find("input", {"type": "submit"})
@@ -54,7 +52,6 @@ def get_status_from_page(url: str) -> str:
             if "out of stock" in text or "sold out" in text:
                 return "soldout"
 
-        # Fallback: look for stock status text anywhere on page
         page_text = soup.get_text().lower()
         if "pre-order" in page_text or "preorder" in page_text:
             return "preorder"
@@ -78,7 +75,6 @@ def search_zatu(query: str) -> str | None:
         resp.raise_for_status()
         soup = BeautifulSoup(resp.text, "html.parser")
 
-        # Zatu search results: find first product link
         result = soup.find("a", class_=lambda c: c and "product" in c.lower())
         if result and result.get("href"):
             href = result["href"]
@@ -91,29 +87,32 @@ def search_zatu(query: str) -> str | None:
         return None
 
 
-def scrape_zatu(releases: list[dict]) -> dict[int, dict]:
+def scrape_zatu(products: list[dict]) -> dict[int, dict]:
     """
-    Main entry point. Accepts list of release dicts from releases.json.
-    Returns: { release_id: { "status": str, "url": str } }
+    Main entry point.
+    products: list of product dicts (id, release_id, type, name, sort_order)
+    Returns: { product_id: { "status": str, "url": str } }
     """
     results = {}
 
-    for release in releases:
-        name = release["name"]
-        rid  = release["id"]
+    for product in products:
+        pid  = product["id"]
+        name = product["name"]
 
         log.info(f"  Zatu: searching for '{name}'")
         url = search_zatu(name)
 
         if not url:
             log.info(f"  Zatu: no result found for '{name}'")
-            results[rid] = {"status": "unknown", "url": f"{BASE_URL}/search/?q={requests.utils.quote(name)}"}
+            results[pid] = {
+                "status": "unknown",
+                "url": SEARCH_URL.format(query=requests.utils.quote(name)),
+            }
         else:
             status = get_status_from_page(url)
             log.info(f"  Zatu: '{name}' → {status} ({url})")
-            results[rid] = {"status": status, "url": url}
+            results[pid] = {"status": status, "url": url}
 
-        # Be polite — don't hammer the server
         time.sleep(2)
 
     return results

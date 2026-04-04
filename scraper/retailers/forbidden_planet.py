@@ -5,8 +5,7 @@ forbiddenplanet.com — UK-based pop culture and TCG retailer.
 Strong Pokémon TCG stock. Static HTML, scraper-friendly.
 
 Strategy:
-- Search FP for each set name
-- Product pages use standard button text and schema.org availability metadata
+- Search by product name (e.g. "Prismatic Evolutions Elite Trainer Box")
 - Parse both structured data (most reliable) and button text (fallback)
 """
 
@@ -37,14 +36,9 @@ SESSION.headers.update(HEADERS)
 
 
 def _parse_schema_status(soup: BeautifulSoup) -> str | None:
-    """
-    Extract availability from schema.org JSON-LD if present.
-    More reliable than button text scraping.
-    """
     for tag in soup.find_all("script", type="application/ld+json"):
         try:
             data = json.loads(tag.string or "")
-            # May be a list or a single object
             items = data if isinstance(data, list) else [data]
             for item in items:
                 avail = (item.get("offers") or {}).get("availability", "")
@@ -72,12 +66,10 @@ def get_status_from_page(url: str) -> str:
         resp.raise_for_status()
         soup = BeautifulSoup(resp.text, "lxml")
 
-        # 1. Try structured data first
         schema_status = _parse_schema_status(soup)
         if schema_status:
             return schema_status
 
-        # 2. Button / form text
         for el in soup.find_all(["button", "input", "a"]):
             text = (el.get("value") or el.get_text(strip=True) or "").lower()
             if "pre-order" in text or "preorder" in text:
@@ -87,7 +79,6 @@ def get_status_from_page(url: str) -> str:
             if "out of stock" in text or "sold out" in text or "unavailable" in text:
                 return "soldout"
 
-        # 3. Full page text fallback
         page_text = soup.get_text(" ", strip=True).lower()
         if "pre-order" in page_text or "preorder" in page_text:
             return "preorder"
@@ -111,20 +102,10 @@ def search_fp(query: str) -> str | None:
         resp.raise_for_status()
         soup = BeautifulSoup(resp.text, "lxml")
 
-        # FP product links: /catalogue/... or /comics/... or /games/...
         for a in soup.find_all("a", href=True):
             href = a["href"]
-            # FP product URLs typically contain /catalogue/ or have numeric IDs
             if ("/catalogue/" in href or "/games/" in href) and "search" not in href:
                 return href if href.startswith("http") else f"{BASE_URL}{href}"
-
-        # Fallback: any product-style link
-        for a in soup.find_all("a", href=True):
-            href = a["href"]
-            if href.startswith("/") and len(href.split("/")) >= 3 and "?" not in href and "search" not in href:
-                candidate = href if href.startswith("http") else f"{BASE_URL}{href}"
-                if candidate != f"{BASE_URL}/":
-                    return candidate
 
         return None
 
@@ -133,30 +114,31 @@ def search_fp(query: str) -> str | None:
         return None
 
 
-def scrape_forbidden_planet(releases: list[dict]) -> dict[int, dict]:
+def scrape_forbidden_planet(products: list[dict]) -> dict[int, dict]:
     """
     Main entry point.
-    Returns: { release_id: { "status": str, "url": str } }
+    products: list of product dicts (id, release_id, type, name, sort_order)
+    Returns: { product_id: { "status": str, "url": str } }
     """
     results = {}
 
-    for release in releases:
-        name = release["name"]
-        rid  = release["id"]
+    for product in products:
+        pid  = product["id"]
+        name = product["name"]
 
         log.info(f"  Forbidden Planet: searching for '{name}'")
-        url = search_fp(f"pokemon {name}")
+        url = search_fp(name)
 
         if not url:
             log.info(f"  Forbidden Planet: no result found for '{name}'")
-            results[rid] = {
+            results[pid] = {
                 "status": "unknown",
-                "url": SEARCH_URL.format(query=requests.utils.quote(f"pokemon {name}")),
+                "url": SEARCH_URL.format(query=requests.utils.quote(name)),
             }
         else:
             status = get_status_from_page(url)
             log.info(f"  Forbidden Planet: '{name}' → {status} ({url})")
-            results[rid] = {"status": status, "url": url}
+            results[pid] = {"status": status, "url": url}
 
         time.sleep(2)
 

@@ -2,15 +2,15 @@
 Magic Madhouse Scraper
 =======================
 magicmadhouse.co.uk — UK specialist TCG retailer, extensive Pokémon range.
-One of the best UK sources for sealed product. Clean HTML, scraper-friendly.
+One of the best UK sources for sealed product. Clean Shopify HTML.
 
 Strategy:
-- Search Magic Madhouse for each set name
-- Product pages are clean Shopify-based HTML
-- Schema.org JSON-LD is reliable; button text as fallback
+- Search by product name (e.g. "Prismatic Evolutions Elite Trainer Box")
+- Schema.org JSON-LD is reliable; Shopify variant data as secondary check
 """
 
 import json
+import re
 import time
 import logging
 import requests
@@ -37,7 +37,6 @@ SESSION.headers.update(HEADERS)
 
 
 def _parse_schema_status(soup: BeautifulSoup) -> str | None:
-    """Extract availability from schema.org JSON-LD if present."""
     for tag in soup.find_all("script", type="application/ld+json"):
         try:
             data = json.loads(tag.string or "")
@@ -58,22 +57,13 @@ def _parse_schema_status(soup: BeautifulSoup) -> str | None:
     return None
 
 
-def _parse_shopify_product_json(soup: BeautifulSoup) -> str | None:
-    """
-    Shopify stores embed product availability in a window.ShopifyAnalytics
-    or product.json script block. Try to extract it.
-    """
+def _parse_shopify_available(soup: BeautifulSoup) -> str | None:
     for script in soup.find_all("script"):
         text = script.string or ""
         if "variants" in text and "available" in text:
-            try:
-                # Look for "available": true/false in the script block
-                import re
-                match = re.search(r'"available"\s*:\s*(true|false)', text)
-                if match:
-                    return "available" if match.group(1) == "true" else "soldout"
-            except Exception:
-                continue
+            match = re.search(r'"available"\s*:\s*(true|false)', text)
+            if match:
+                return "available" if match.group(1) == "true" else "soldout"
     return None
 
 
@@ -91,7 +81,7 @@ def get_status_from_page(url: str) -> str:
         if schema_status:
             return schema_status
 
-        shopify_status = _parse_shopify_product_json(soup)
+        shopify_status = _parse_shopify_available(soup)
         if shopify_status:
             return shopify_status
 
@@ -127,7 +117,6 @@ def search_magic_madhouse(query: str) -> str | None:
         resp.raise_for_status()
         soup = BeautifulSoup(resp.text, "lxml")
 
-        # Magic Madhouse is Shopify: product links at /products/...
         for a in soup.find_all("a", href=True):
             href = a["href"]
             if "/products/" in href and "search" not in href:
@@ -140,30 +129,31 @@ def search_magic_madhouse(query: str) -> str | None:
         return None
 
 
-def scrape_magic_madhouse(releases: list[dict]) -> dict[int, dict]:
+def scrape_magic_madhouse(products: list[dict]) -> dict[int, dict]:
     """
     Main entry point.
-    Returns: { release_id: { "status": str, "url": str } }
+    products: list of product dicts (id, release_id, type, name, sort_order)
+    Returns: { product_id: { "status": str, "url": str } }
     """
     results = {}
 
-    for release in releases:
-        name = release["name"]
-        rid  = release["id"]
+    for product in products:
+        pid  = product["id"]
+        name = product["name"]
 
         log.info(f"  Magic Madhouse: searching for '{name}'")
-        url = search_magic_madhouse(f"pokemon {name}")
+        url = search_magic_madhouse(name)
 
         if not url:
             log.info(f"  Magic Madhouse: no result found for '{name}'")
-            results[rid] = {
+            results[pid] = {
                 "status": "unknown",
-                "url": SEARCH_URL.format(query=requests.utils.quote(f"pokemon {name}")),
+                "url": SEARCH_URL.format(query=requests.utils.quote(name)),
             }
         else:
             status = get_status_from_page(url)
             log.info(f"  Magic Madhouse: '{name}' → {status} ({url})")
-            results[rid] = {"status": status, "url": url}
+            results[pid] = {"status": status, "url": url}
 
         time.sleep(2)
 

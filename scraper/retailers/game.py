@@ -4,7 +4,7 @@ GAME Scraper
 game.co.uk — major UK games retailer, strong Pokémon TCG presence.
 
 Strategy:
-- Search GAME for each set name
+- Search by product name (e.g. "Prismatic Evolutions Elite Trainer Box")
 - GAME uses standard button text: "Add to Basket", "Pre-Order", "Sold Out"
 - Product pages are mostly server-rendered, reliable for text scraping
 """
@@ -44,7 +44,6 @@ def get_status_from_page(url: str) -> str:
         resp.raise_for_status()
         soup = BeautifulSoup(resp.text, "lxml")
 
-        # GAME uses specific button classes/text for CTAs
         for btn in soup.find_all(["button", "a"], class_=True):
             cls  = " ".join(btn.get("class", [])).lower()
             text = btn.get_text(strip=True).lower()
@@ -80,14 +79,11 @@ def search_game(query: str) -> str | None:
         resp.raise_for_status()
         soup = BeautifulSoup(resp.text, "lxml")
 
-        # GAME product pages: /en/{product-name}.html or /games/...
         for a in soup.find_all("a", href=True):
             href = a["href"]
-            # GAME product links typically end in .html and don't contain /search
             if href.endswith(".html") and "/search" not in href and "/en/" in href:
                 return href if href.startswith("http") else f"{BASE_URL}{href}"
 
-        # Fallback: any link containing "pokemon" in the href
         for a in soup.find_all("a", href=True):
             href = a["href"]
             if "pokemon" in href.lower() and href.endswith(".html"):
@@ -100,30 +96,31 @@ def search_game(query: str) -> str | None:
         return None
 
 
-def scrape_game(releases: list[dict]) -> dict[int, dict]:
+def scrape_game(products: list[dict]) -> dict[int, dict]:
     """
     Main entry point.
-    Returns: { release_id: { "status": str, "url": str } }
+    products: list of product dicts (id, release_id, type, name, sort_order)
+    Returns: { product_id: { "status": str, "url": str } }
     """
     results = {}
 
-    for release in releases:
-        name = release["name"]
-        rid  = release["id"]
+    for product in products:
+        pid  = product["id"]
+        name = product["name"]
 
         log.info(f"  GAME: searching for '{name}'")
-        url = search_game(f"pokemon {name}")
+        url = search_game(name)
 
         if not url:
             log.info(f"  GAME: no result found for '{name}'")
-            results[rid] = {
+            results[pid] = {
                 "status": "unknown",
-                "url": SEARCH_URL.format(query=requests.utils.quote(f"pokemon {name}")),
+                "url": SEARCH_URL.format(query=requests.utils.quote(name)),
             }
         else:
             status = get_status_from_page(url)
             log.info(f"  GAME: '{name}' → {status} ({url})")
-            results[rid] = {"status": status, "url": url}
+            results[pid] = {"status": status, "url": url}
 
         time.sleep(2)
 

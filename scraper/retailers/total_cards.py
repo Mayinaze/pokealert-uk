@@ -5,8 +5,7 @@ totalcards.net — UK specialist TCG retailer, strong Pokémon TCG range.
 Very scraper-friendly: clean HTML, no significant bot detection.
 
 Strategy:
-- Search Total Cards for each set name
-- Product pages are standard HTML with clear CTA buttons
+- Search by product name (e.g. "Prismatic Evolutions Elite Trainer Box")
 - Schema.org data is usually present and reliable
 """
 
@@ -37,7 +36,6 @@ SESSION.headers.update(HEADERS)
 
 
 def _parse_schema_status(soup: BeautifulSoup) -> str | None:
-    """Extract availability from schema.org JSON-LD if present."""
     for tag in soup.find_all("script", type="application/ld+json"):
         try:
             data = json.loads(tag.string or "")
@@ -104,7 +102,6 @@ def search_total_cards(query: str) -> str | None:
         resp.raise_for_status()
         soup = BeautifulSoup(resp.text, "lxml")
 
-        # Total Cards product links: /collections/... or /products/...
         for a in soup.find_all("a", href=True):
             href = a["href"]
             if "/products/" in href and "search" not in href:
@@ -117,30 +114,31 @@ def search_total_cards(query: str) -> str | None:
         return None
 
 
-def scrape_total_cards(releases: list[dict]) -> dict[int, dict]:
+def scrape_total_cards(products: list[dict]) -> dict[int, dict]:
     """
     Main entry point.
-    Returns: { release_id: { "status": str, "url": str } }
+    products: list of product dicts (id, release_id, type, name, sort_order)
+    Returns: { product_id: { "status": str, "url": str } }
     """
     results = {}
 
-    for release in releases:
-        name = release["name"]
-        rid  = release["id"]
+    for product in products:
+        pid  = product["id"]
+        name = product["name"]
 
         log.info(f"  Total Cards: searching for '{name}'")
-        url = search_total_cards(f"pokemon {name}")
+        url = search_total_cards(name)
 
         if not url:
             log.info(f"  Total Cards: no result found for '{name}'")
-            results[rid] = {
+            results[pid] = {
                 "status": "unknown",
-                "url": SEARCH_URL.format(query=requests.utils.quote(f"pokemon {name}")),
+                "url": SEARCH_URL.format(query=requests.utils.quote(name)),
             }
         else:
             status = get_status_from_page(url)
             log.info(f"  Total Cards: '{name}' → {status} ({url})")
-            results[rid] = {"status": status, "url": url}
+            results[pid] = {"status": status, "url": url}
 
         time.sleep(2)
 

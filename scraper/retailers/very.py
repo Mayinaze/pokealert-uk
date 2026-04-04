@@ -4,9 +4,7 @@ Very Scraper
 very.co.uk — UK online retailer, stocks Pokémon TCG alongside toys/gifts.
 
 Strategy:
-- Search Very for each set name
-- Very pages are partially JS-rendered (Vue/React); text-based detection
-  catches most cases since status text is embedded in the initial HTML
+- Search by product name (e.g. "Prismatic Evolutions Elite Trainer Box")
 - Parse schema.org data where available (most reliable)
 
 Note: Very uses Cloudflare. If this consistently returns 'unknown',
@@ -14,6 +12,7 @@ the site may require a headless browser for full JS rendering.
 """
 
 import json
+import re
 import time
 import logging
 import requests
@@ -41,7 +40,6 @@ SESSION.headers.update(HEADERS)
 
 
 def _parse_schema_status(soup: BeautifulSoup) -> str | None:
-    """Extract availability from schema.org JSON-LD if present."""
     for tag in soup.find_all("script", type="application/ld+json"):
         try:
             data = json.loads(tag.string or "")
@@ -108,14 +106,11 @@ def search_very(query: str) -> str | None:
         resp.raise_for_status()
         soup = BeautifulSoup(resp.text, "lxml")
 
-        # Very product links typically contain /e/ and a numeric product ID
         for a in soup.find_all("a", href=True):
             href = a["href"]
             if "/e/" in href and "search" not in href and "term" not in href:
                 return href if href.startswith("http") else f"{BASE_URL}{href}"
 
-        # Fallback: any link with a long numeric segment (product IDs)
-        import re
         for a in soup.find_all("a", href=True):
             href = a["href"]
             if re.search(r"/\d{6,}[./]", href) and "search" not in href:
@@ -128,30 +123,31 @@ def search_very(query: str) -> str | None:
         return None
 
 
-def scrape_very(releases: list[dict]) -> dict[int, dict]:
+def scrape_very(products: list[dict]) -> dict[int, dict]:
     """
     Main entry point.
-    Returns: { release_id: { "status": str, "url": str } }
+    products: list of product dicts (id, release_id, type, name, sort_order)
+    Returns: { product_id: { "status": str, "url": str } }
     """
     results = {}
 
-    for release in releases:
-        name = release["name"]
-        rid  = release["id"]
+    for product in products:
+        pid  = product["id"]
+        name = product["name"]
 
         log.info(f"  Very: searching for '{name}'")
-        url = search_very(f"pokemon {name}")
+        url = search_very(name)
 
         if not url:
             log.info(f"  Very: no result found for '{name}'")
-            results[rid] = {
+            results[pid] = {
                 "status": "unknown",
-                "url": SEARCH_URL.format(query=requests.utils.quote(f"pokemon {name}")),
+                "url": SEARCH_URL.format(query=requests.utils.quote(name)),
             }
         else:
             status = get_status_from_page(url)
             log.info(f"  Very: '{name}' → {status} ({url})")
-            results[rid] = {"status": status, "url": url}
+            results[pid] = {"status": status, "url": url}
 
         time.sleep(2)
 

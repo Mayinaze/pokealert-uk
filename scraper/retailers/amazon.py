@@ -15,10 +15,9 @@ amazon.co.uk — included for visibility on official Pokémon TCG listings.
      in SCRAPERS in scraper.py until a proper session solution is in place.
 
 Strategy:
-- Search Amazon for each set name with "site:amazon.co.uk pokemon cards"
-  style filtering to prioritise official listings
+- Search by product name (e.g. "Prismatic Evolutions Elite Trainer Box")
+- Filter search to 'Sold by Amazon' to exclude marketplace sellers
 - Detect "In Stock", "Pre-order", "Currently unavailable" in page text
-- Use a rotating UA and session cookies to reduce bot detection
 """
 
 import time
@@ -29,7 +28,8 @@ from bs4 import BeautifulSoup
 log = logging.getLogger(__name__)
 
 BASE_URL   = "https://www.amazon.co.uk"
-SEARCH_URL = f"{BASE_URL}/s?k={{query}}&rh=p_6%3AA3P5ROKL5A1OLE"  # rh filters for "Sold by Amazon" (official)
+# rh filter: p_6:A3P5ROKL5A1OLE = "Sold by Amazon"
+SEARCH_URL = f"{BASE_URL}/s?k={{query}}&rh=p_6%3AA3P5ROKL5A1OLE"
 
 HEADERS = {
     "User-Agent": (
@@ -50,7 +50,6 @@ SESSION.headers.update(HEADERS)
 
 
 def _is_captcha_page(text: str) -> bool:
-    """Detect if Amazon has served a CAPTCHA / robot check page."""
     lower = text.lower()
     return (
         "enter the characters you see below" in lower
@@ -65,8 +64,6 @@ def get_status_from_page(url: str) -> str:
     """
     Fetch an Amazon product page and determine stock status.
     Returns: 'available' | 'preorder' | 'soldout' | 'unknown'
-
-    Frequently returns 'unknown' due to Amazon bot detection.
     """
     try:
         resp = SESSION.get(url, timeout=15)
@@ -79,7 +76,6 @@ def get_status_from_page(url: str) -> str:
         soup = BeautifulSoup(resp.text, "lxml")
         page_text = soup.get_text(" ", strip=True).lower()
 
-        # Amazon stock indicators
         if "pre-order" in page_text or "preorder" in page_text:
             return "preorder"
         if "in stock" in page_text and "out of stock" not in page_text:
@@ -91,7 +87,6 @@ def get_status_from_page(url: str) -> str:
         ):
             return "soldout"
 
-        # Check the buy box area specifically
         buy_box = soup.find(id="buybox") or soup.find(id="availability")
         if buy_box:
             bb_text = buy_box.get_text(" ", strip=True).lower()
@@ -113,11 +108,9 @@ def search_amazon(query: str) -> str | None:
     """
     Search Amazon for an official Pokémon TCG listing.
     Filters to 'Sold by Amazon' to avoid third-party marketplace results.
-    Returns product URL or None.
     """
     try:
-        search_term = f"Pokemon TCG {query} booster"
-        url = SEARCH_URL.format(query=requests.utils.quote(search_term))
+        url = SEARCH_URL.format(query=requests.utils.quote(query))
         resp = SESSION.get(url, timeout=15)
         resp.raise_for_status()
 
@@ -127,18 +120,13 @@ def search_amazon(query: str) -> str | None:
 
         soup = BeautifulSoup(resp.text, "lxml")
 
-        # Amazon search results: product links in [data-asin] containers
         for container in soup.find_all(attrs={"data-asin": True}):
             asin = container.get("data-asin", "")
             if not asin:
                 continue
-            # Find the product title link within this container
-            link = container.find("a", class_=lambda c: c and "s-no-outline" in (c if isinstance(c, str) else " ".join(c)))
-            if not link:
-                link = container.find("a", href=lambda h: h and "/dp/" in (h or ""))
+            link = container.find("a", href=lambda h: h and "/dp/" in (h or ""))
             if link and link.get("href"):
                 href = link["href"]
-                # Strip affiliate/session params — keep only the /dp/ASIN part
                 if "/dp/" in href:
                     asin_path = "/dp/" + href.split("/dp/")[1].split("?")[0].split("/")[0]
                     return f"{BASE_URL}{asin_path}"
@@ -150,36 +138,36 @@ def search_amazon(query: str) -> str | None:
         return None
 
 
-def scrape_amazon(releases: list[dict]) -> dict[int, dict]:
+def scrape_amazon(products: list[dict]) -> dict[int, dict]:
     """
     Main entry point.
-    Returns: { release_id: { "status": str, "url": str } }
+    products: list of product dicts (id, release_id, type, name, sort_order)
+    Returns: { product_id: { "status": str, "url": str } }
 
     ⚠️  Amazon frequently blocks automated requests. Expect a high rate of
-    'unknown' results. Status is tracked for trend detection, not relied
-    upon for accuracy.
+    'unknown' results.
     """
     results = {}
 
-    for release in releases:
-        name = release["name"]
-        rid  = release["id"]
+    for product in products:
+        pid  = product["id"]
+        name = product["name"]
 
         log.info(f"  Amazon: searching for '{name}'")
         url = search_amazon(name)
 
         if not url:
             log.info(f"  Amazon: no result found for '{name}'")
-            results[rid] = {
+            results[pid] = {
                 "status": "unknown",
-                "url": SEARCH_URL.format(query=requests.utils.quote(f"Pokemon TCG {name}")),
+                "url": SEARCH_URL.format(query=requests.utils.quote(name)),
             }
         else:
             status = get_status_from_page(url)
             log.info(f"  Amazon: '{name}' → {status} ({url})")
-            results[rid] = {"status": status, "url": url}
+            results[pid] = {"status": status, "url": url}
 
-        # Amazon needs longer delays to reduce bot detection probability
+        # Longer delay to reduce bot-detection probability
         time.sleep(4)
 
     return results

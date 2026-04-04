@@ -89,19 +89,24 @@ def now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
-def run_scrapers(releases: list[dict]) -> dict[int, dict[str, dict]]:
+def run_scrapers(products_flat: list[dict]) -> dict[int, dict[str, dict]]:
     """
-    Runs all retailer scrapers and merges results.
-    Returns: { release_id: { retailer_name: { "status": str, "url": str } } }
+    Runs all retailer scrapers against the full product list.
+
+    Each scraper receives every product and searches by product name
+    (e.g. "Prismatic Evolutions Elite Trainer Box"), so each product gets
+    its own correctly matched retailer URL.
+
+    Returns: { product_id: { retailer_name: { "status": str, "url": str } } }
     """
     merged: dict[int, dict] = {}
 
     for retailer_name, scrape_fn in SCRAPERS:
         log.info(f"Scraping {retailer_name}...")
         try:
-            results = scrape_fn(releases)
-            for release_id, info in results.items():
-                merged.setdefault(release_id, {})[retailer_name] = info
+            results = scrape_fn(products_flat)
+            for product_id, info in results.items():
+                merged.setdefault(product_id, {})[retailer_name] = info
             log.info(f"  {retailer_name}: {len(results)} results")
         except Exception as e:
             log.error(f"  {retailer_name} scraper failed: {e}")
@@ -109,35 +114,24 @@ def run_scrapers(releases: list[dict]) -> dict[int, dict[str, dict]]:
     return merged
 
 
-def build_upsert_rows(
-    merged: dict[int, dict[str, dict]],
-    products_by_release: dict[int, list[dict]],
-) -> list[dict]:
+def build_upsert_rows(merged: dict[int, dict[str, dict]]) -> list[dict]:
     """
-    Flattens scraper output into stock rows, one per (product, retailer) pair.
-    The same status/url is applied to every product within a release — per-product
-    scraping is a future enhancement once scrapers support product-level URLs.
-    Price is left null until scrapers support it.
+    Flattens per-product scraper output into stock rows.
+    One row per (product_id, retailer) — each product has its own URL.
     """
     rows = []
     ts = now_iso()
 
-    for release_id, retailers in merged.items():
-        release_products = products_by_release.get(release_id, [])
-        if not release_products:
-            log.warning(f"Release #{release_id} has no products in DB — stock not written")
-            continue
-
+    for product_id, retailers in merged.items():
         for retailer_name, info in retailers.items():
-            for product in release_products:
-                rows.append({
-                    "product_id":   product["id"],
-                    "retailer":     retailer_name,
-                    "status":       info.get("status", "unknown"),
-                    "url":          info.get("url", ""),
-                    "price":        None,
-                    "last_checked": ts,
-                })
+            rows.append({
+                "product_id":   product_id,
+                "retailer":     retailer_name,
+                "status":       info.get("status", "unknown"),
+                "url":          info.get("url", ""),
+                "price":        None,
+                "last_checked": ts,
+            })
 
     return rows
 
@@ -158,9 +152,9 @@ def send_notifications(
 ) -> None:
     release_names = {r["id"]: r["name"] for r in releases}
 
-    # Build product_id → release_id lookup
-    product_release_map = {
-        p["id"]: p["release_id"]
+    # Build product_id → (release_id, product_name) lookup
+    product_info_map: dict[int, tuple[int, str]] = {
+        p["id"]: (p["release_id"], p["name"])
         for products in products_by_release.values()
         for p in products
     }
@@ -175,17 +169,17 @@ def send_notifications(
         if new_status not in ("preorder", "available"):
             continue
 
-        release_id = product_release_map.get(row["product_id"])
-        set_name   = release_names.get(release_id, f"Release #{release_id}")
-        retailer   = row["retailer"]
-        url        = row["url"]
+        release_id, product_name = product_info_map.get(row["product_id"], (None, None))
+        set_name = release_names.get(release_id, f"Release #{release_id}")
+        retailer = row["retailer"]
+        url      = row["url"]
 
         if new_status == "preorder":
-            title   = f"Pre-order live: {set_name}"
-            message = f"{retailer} now has {set_name} available to pre-order.\n{url}"
+            title   = f"Pre-order live: {product_name or set_name}"
+            message = f"{retailer} now has {product_name or set_name} available to pre-order.\n{url}"
         else:
-            title   = f"Back in stock: {set_name}"
-            message = f"{set_name} is now in stock at {retailer}.\n{url}"
+            title   = f"In stock: {product_name or set_name}"
+            message = f"{product_name or set_name} is now in stock at {retailer}.\n{url}"
 
         log.info(f"Notifying: {title}")
         notify(title, message)
@@ -197,18 +191,23 @@ def main():
     db = get_supabase()
 
     # 1. Auto-discover new sets from Bulbapedia.
-    new_sets = discover_and_insert(db)
+    discover_and_insert(db)
 
-    # 2. Backfill image_url for any releases still missing one
-    #    (covers existing seed data; new sets get their logo during discovery).
+    # 2. Backfill image_url for any releases still missing one.
     backfill_images(db)
 
     releases            = fetch_releases(db)
     products_by_release = fetch_products(db)
     old_stock           = fetch_current_stock(db)
 
-    merged = run_scrapers(releases)
-    rows   = build_upsert_rows(merged, products_by_release)
+    # Flatten to a single list — scrapers now work per-product, not per-release
+    products_flat = [
+        p for products in products_by_release.values() for p in products
+    ]
+    log.info(f"Scraping {len(products_flat)} products across {len(releases)} releases")
+
+    merged = run_scrapers(products_flat)
+    rows   = build_upsert_rows(merged)
 
     changes = [
         r for r in rows

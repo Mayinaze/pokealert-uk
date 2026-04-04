@@ -4,14 +4,13 @@ Argos Scraper
 argos.co.uk — major UK retailer, stocks Pokémon TCG.
 
 Strategy:
-- Search Argos for each set name + "pokemon tcg"
+- Search by product name (e.g. "Prismatic Evolutions Elite Trainer Box")
 - Product pages use data-test attributes for CTA buttons
 - Argos renders some content server-side; status text is usually present
   in the HTML even without JS execution
 
 Note: Argos pages are partially JS-rendered (React/Hydra). If this
 consistently returns 'unknown', a headless browser would be needed.
-For now, text-based detection covers most cases.
 """
 
 import time
@@ -49,7 +48,6 @@ def get_status_from_page(url: str) -> str:
         resp.raise_for_status()
         soup = BeautifulSoup(resp.text, "lxml")
 
-        # Check data-test CTA buttons first
         for btn in soup.find_all(attrs={"data-test": True}):
             val = btn.get("data-test", "").lower()
             txt = btn.get_text(strip=True).lower()
@@ -78,14 +76,12 @@ def get_status_from_page(url: str) -> str:
 
 def search_argos(query: str) -> str | None:
     """Search Argos and return the URL of the best matching product."""
-    search_term = f"pokemon {query}"
     try:
-        url = SEARCH_URL.format(query=requests.utils.quote(search_term))
+        url = SEARCH_URL.format(query=requests.utils.quote(query))
         resp = SESSION.get(url, timeout=15)
         resp.raise_for_status()
         soup = BeautifulSoup(resp.text, "lxml")
 
-        # Argos product links: /product/{id}/name.html
         for a in soup.find_all("a", href=True):
             href = a["href"]
             if "/product/" in href:
@@ -98,30 +94,31 @@ def search_argos(query: str) -> str | None:
         return None
 
 
-def scrape_argos(releases: list[dict]) -> dict[int, dict]:
+def scrape_argos(products: list[dict]) -> dict[int, dict]:
     """
     Main entry point.
-    Returns: { release_id: { "status": str, "url": str } }
+    products: list of product dicts (id, release_id, type, name, sort_order)
+    Returns: { product_id: { "status": str, "url": str } }
     """
     results = {}
 
-    for release in releases:
-        name = release["name"]
-        rid  = release["id"]
+    for product in products:
+        pid  = product["id"]
+        name = product["name"]
 
         log.info(f"  Argos: searching for '{name}'")
         url = search_argos(name)
 
         if not url:
             log.info(f"  Argos: no result found for '{name}'")
-            results[rid] = {
+            results[pid] = {
                 "status": "unknown",
-                "url": SEARCH_URL.format(query=requests.utils.quote(f"pokemon {name}")),
+                "url": SEARCH_URL.format(query=requests.utils.quote(name)),
             }
         else:
             status = get_status_from_page(url)
             log.info(f"  Argos: '{name}' → {status} ({url})")
-            results[rid] = {"status": status, "url": url}
+            results[pid] = {"status": status, "url": url}
 
         time.sleep(2)
 
