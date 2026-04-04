@@ -1,8 +1,8 @@
 """
 PokeAlert UK — Main Scraper
 ============================
-Pulls releases from Supabase, runs retailer scrapers,
-upserts stock results, and sends Pushover alerts on status changes.
+Pulls releases + products from Supabase, runs retailer scrapers,
+upserts stock per product, and sends Pushover alerts on status changes.
 
 Usage:
     python scraper.py
@@ -20,7 +20,7 @@ from supabase import create_client, Client
 from retailers.zatu import scrape_zatu
 from retailers.games365 import scrape_365games
 from retailers.smyths import scrape_smyths
-# from retailers.amazon import scrape_amazon        # TODO — harder, needs workaround
+# from retailers.amazon import scrape_amazon        # TODO
 # from retailers.pokemon_center import scrape_pc    # TODO
 
 from pushover import notify
@@ -48,14 +48,24 @@ def get_supabase() -> Client:
 
 def fetch_releases(db: Client) -> list[dict]:
     resp = db.table("releases").select("*").execute()
-    log.info(f"Fetched {len(resp.data)} releases from Supabase")
+    log.info(f"Fetched {len(resp.data)} releases")
     return resp.data
 
 
+def fetch_products(db: Client) -> dict[int, list[dict]]:
+    """Returns products grouped by release_id: { release_id: [product, ...] }"""
+    resp = db.table("products").select("*").execute()
+    result: dict[int, list[dict]] = {}
+    for row in resp.data:
+        result.setdefault(row["release_id"], []).append(row)
+    log.info(f"Fetched {len(resp.data)} products across {len(result)} releases")
+    return result
+
+
 def fetch_current_stock(db: Client) -> dict[tuple, str]:
-    """Returns a map of (release_id, retailer) → status for change detection."""
-    resp = db.table("stock").select("release_id, retailer, status").execute()
-    return {(row["release_id"], row["retailer"]): row["status"] for row in resp.data}
+    """Returns { (product_id, retailer): status } for change detection."""
+    resp = db.table("stock").select("product_id, retailer, status").execute()
+    return {(row["product_id"], row["retailer"]): row["status"] for row in resp.data}
 
 
 def now_iso() -> str:
@@ -82,36 +92,64 @@ def run_scrapers(releases: list[dict]) -> dict[int, dict[str, dict]]:
     return merged
 
 
-def build_upsert_rows(merged: dict[int, dict[str, dict]]) -> list[dict]:
-    """Flatten merged scraper output into rows ready for Supabase upsert."""
+def build_upsert_rows(
+    merged: dict[int, dict[str, dict]],
+    products_by_release: dict[int, list[dict]],
+) -> list[dict]:
+    """
+    Flattens scraper output into stock rows, one per (product, retailer) pair.
+    The same status/url is applied to every product within a release — per-product
+    scraping is a future enhancement once scrapers support product-level URLs.
+    Price is left null until scrapers support it.
+    """
     rows = []
     ts = now_iso()
+
     for release_id, retailers in merged.items():
+        release_products = products_by_release.get(release_id, [])
+        if not release_products:
+            log.warning(f"Release #{release_id} has no products in DB — stock not written")
+            continue
+
         for retailer_name, info in retailers.items():
-            rows.append({
-                "release_id":   release_id,
-                "retailer":     retailer_name,
-                "status":       info.get("status", "unknown"),
-                "url":          info.get("url", ""),
-                "last_checked": ts,
-            })
+            for product in release_products:
+                rows.append({
+                    "product_id":   product["id"],
+                    "retailer":     retailer_name,
+                    "status":       info.get("status", "unknown"),
+                    "url":          info.get("url", ""),
+                    "price":        None,
+                    "last_checked": ts,
+                })
+
     return rows
 
 
 def upsert_stock(db: Client, rows: list[dict]) -> None:
-    db.table("stock").upsert(rows, on_conflict="release_id,retailer").execute()
-    log.info(f"Upserted {len(rows)} stock rows to Supabase")
+    if not rows:
+        log.info("No stock rows to upsert")
+        return
+    db.table("stock").upsert(rows, on_conflict="product_id,retailer").execute()
+    log.info(f"Upserted {len(rows)} stock rows")
 
 
 def send_notifications(
     rows: list[dict],
     old_stock: dict[tuple, str],
     releases: list[dict],
+    products_by_release: dict[int, list[dict]],
 ) -> None:
     release_names = {r["id"]: r["name"] for r in releases}
 
+    # Build product_id → release_id lookup
+    product_release_map = {
+        p["id"]: p["release_id"]
+        for products in products_by_release.values()
+        for p in products
+    }
+
     for row in rows:
-        key        = (row["release_id"], row["retailer"])
+        key        = (row["product_id"], row["retailer"])
         old_status = old_stock.get(key)
         new_status = row["status"]
 
@@ -120,9 +158,10 @@ def send_notifications(
         if new_status not in ("preorder", "available"):
             continue
 
-        set_name = release_names.get(row["release_id"], f"Release #{row['release_id']}")
-        retailer = row["retailer"]
-        url      = row["url"]
+        release_id = product_release_map.get(row["product_id"])
+        set_name   = release_names.get(release_id, f"Release #{release_id}")
+        retailer   = row["retailer"]
+        url        = row["url"]
 
         if new_status == "preorder":
             title   = f"Pre-order live: {set_name}"
@@ -140,23 +179,24 @@ def main():
 
     db = get_supabase()
 
-    releases  = fetch_releases(db)
-    old_stock = fetch_current_stock(db)
+    releases            = fetch_releases(db)
+    products_by_release = fetch_products(db)
+    old_stock           = fetch_current_stock(db)
 
     merged = run_scrapers(releases)
-    rows   = build_upsert_rows(merged)
+    rows   = build_upsert_rows(merged, products_by_release)
 
     changes = [
         r for r in rows
-        if old_stock.get((r["release_id"], r["retailer"])) != r["status"]
+        if old_stock.get((r["product_id"], r["retailer"])) != r["status"]
     ]
     log.info(f"Detected {len(changes)} status change(s)")
     for c in changes:
-        old = old_stock.get((c["release_id"], c["retailer"]), "new")
-        log.info(f"  → Release #{c['release_id']} at {c['retailer']}: {old} → {c['status']}")
+        old = old_stock.get((c["product_id"], c["retailer"]), "new")
+        log.info(f"  → Product #{c['product_id']} at {c['retailer']}: {old} → {c['status']}")
 
     upsert_stock(db, rows)
-    send_notifications(rows, old_stock, releases)
+    send_notifications(rows, old_stock, releases, products_by_release)
 
     log.info("=== Done ===")
 

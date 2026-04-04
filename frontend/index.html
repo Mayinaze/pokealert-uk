@@ -6,6 +6,7 @@
 <title>PokeAlert UK — Pokémon TCG Tracker</title>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
 <style>
+  /* ── Design tokens ─────────────────────────────────────────── */
   :root {
     --bg: #0a0a0f;
     --surface: #12121a;
@@ -47,7 +48,7 @@
 
   .container { max-width: 900px; margin: 0 auto; padding: 0 24px; position: relative; z-index: 1; }
 
-  /* HEADER */
+  /* ── Header ────────────────────────────────────────────────── */
   header {
     border-bottom: 1px solid var(--border);
     padding: 20px 0;
@@ -99,7 +100,7 @@
 
   .header-meta span { color: var(--green); }
 
-  /* HERO STRIP */
+  /* ── Hero strip ────────────────────────────────────────────── */
   .hero-strip {
     background: linear-gradient(135deg, #1a1a00 0%, #0a0a1f 50%, #1a0a0a 100%);
     border-bottom: 1px solid var(--border);
@@ -171,7 +172,7 @@
     font-weight: 500;
   }
 
-  /* FILTERS */
+  /* ── Search bar ────────────────────────────────────────────── */
   .filters-bar {
     padding: 20px 0;
     border-bottom: 1px solid var(--border);
@@ -190,6 +191,7 @@
     margin-right: 4px;
   }
 
+  /* kept for potential future use */
   .filter-btn {
     font-family: var(--font-mono);
     font-size: 0.72rem;
@@ -207,10 +209,57 @@
   .filter-btn:hover { border-color: var(--yellow-dim); color: var(--text); }
   .filter-btn.active { border-color: var(--yellow); color: var(--yellow); background: rgba(255,215,0,0.08); }
 
-  /* CONTENT */
+  .search-input {
+    flex: 1;
+    max-width: 420px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 8px 14px;
+    color: var(--text);
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+
+  .search-input:focus { border-color: var(--yellow-dim); }
+  .search-input::placeholder { color: var(--muted); }
+
+  /* ── Content area ──────────────────────────────────────────── */
   .content { padding: 32px 0 48px; }
 
-  /* SECTION HEADERS */
+  .hidden { display: none !important; }
+
+  /* ── Breadcrumb ────────────────────────────────────────────── */
+  .breadcrumb {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 24px;
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+  }
+
+  .back-btn {
+    background: none;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    padding: 5px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    transition: border-color 0.2s, color 0.2s;
+  }
+
+  .back-btn:hover { border-color: var(--yellow); color: var(--yellow); }
+
+  .breadcrumb-sep { color: var(--border); }
+
+  .breadcrumb-label { color: var(--muted); }
+
+  /* ── Section header ────────────────────────────────────────── */
   .section-header {
     display: flex;
     align-items: center;
@@ -235,7 +284,26 @@
     border: 1px solid var(--border);
   }
 
-  /* RELEASE CARDS */
+  /* ── Status pills ──────────────────────────────────────────── */
+  .status-pill {
+    font-family: var(--font-mono);
+    font-size: 0.63rem;
+    font-weight: 600;
+    padding: 3px 9px;
+    border-radius: 3px;
+    border: 1px solid;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    display: inline-block;
+    white-space: nowrap;
+  }
+
+  .pill-preorder  { color: var(--yellow); border-color: rgba(255,215,0,0.4);   background: rgba(255,215,0,0.08); }
+  .pill-available { color: var(--green);  border-color: rgba(74,226,160,0.4);  background: rgba(74,226,160,0.08); }
+  .pill-soldout   { color: var(--red);    border-color: rgba(226,74,74,0.4);   background: rgba(226,74,74,0.08); }
+  .pill-unknown   { color: var(--muted);  border-color: var(--border);         background: var(--surface2); }
+
+  /* ── Level 1: Release cards ────────────────────────────────── */
   .releases-list { display: flex; flex-direction: column; gap: 12px; }
 
   .release-card {
@@ -243,6 +311,7 @@
     border: 1px solid var(--border);
     border-radius: 8px;
     overflow: hidden;
+    cursor: pointer;
     transition: border-color 0.25s, transform 0.25s, box-shadow 0.25s;
     animation: fadeSlideIn 0.4s ease both;
   }
@@ -302,15 +371,12 @@
     flex-shrink: 0;
   }
 
-  .date-day { font-size: 1.4rem; font-weight: 600; color: var(--yellow); line-height: 1; }
+  .date-day   { font-size: 1.4rem; font-weight: 600; color: var(--yellow); line-height: 1; }
   .date-month { color: var(--muted); text-transform: uppercase; letter-spacing: 1px; }
+  .date-tbc   { font-family: var(--font-mono); font-size: 0.8rem; color: var(--muted); }
 
-  .card-tags {
-    display: flex;
-    gap: 6px;
-    flex-wrap: wrap;
-    margin-bottom: 14px;
-  }
+  /* kept for potential future use */
+  .card-tags { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 14px; }
 
   .tag {
     font-family: var(--font-mono);
@@ -329,7 +395,7 @@
   .tag-pack       { color: #f97316; border-color: rgba(249,115,22,0.3); background: rgba(249,115,22,0.08); }
   .tag-default    { color: var(--muted); border-color: var(--border); background: var(--surface2); }
 
-  /* RETAILER STATUS PILLS */
+  /* kept for potential future use */
   .retailers-row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
 
   .retailer-pill {
@@ -350,19 +416,155 @@
 
   .retailer-pill:hover { border-color: rgba(255,215,0,0.4); color: var(--yellow); }
 
-  .retailer-pill .dot {
-    width: 6px;
-    height: 6px;
-    border-radius: 50%;
-    flex-shrink: 0;
-  }
-
+  .retailer-pill .dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
   .dot-available { background: var(--green); box-shadow: 0 0 6px var(--green); }
   .dot-preorder  { background: var(--yellow); box-shadow: 0 0 6px var(--yellow); }
   .dot-soldout   { background: var(--red); }
   .dot-unknown   { background: var(--muted); }
 
-  /* EMPTY / ERROR STATE */
+  .card-status-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .product-count-badge {
+    font-family: var(--font-mono);
+    font-size: 0.63rem;
+    color: var(--muted);
+  }
+
+  /* ── Level 2: Product type cards ───────────────────────────── */
+  .products-list { display: flex; flex-direction: column; gap: 12px; }
+
+  .product-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px 20px;
+    cursor: pointer;
+    transition: border-color 0.25s, transform 0.25s, box-shadow 0.25s;
+    animation: fadeSlideIn 0.4s ease both;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+  }
+
+  .product-card:hover {
+    border-color: rgba(255,215,0,0.3);
+    transform: translateY(-1px);
+    box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+  }
+
+  .product-card-left { display: flex; flex-direction: column; gap: 4px; }
+
+  .product-type-label {
+    font-family: var(--font-display);
+    font-size: 1.2rem;
+    letter-spacing: 1px;
+    line-height: 1.1;
+  }
+
+  .product-name-sub {
+    font-size: 0.75rem;
+    color: var(--muted);
+    font-weight: 300;
+  }
+
+  .product-card-right {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 6px;
+    flex-shrink: 0;
+  }
+
+  .product-price {
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    color: var(--text);
+  }
+
+  /* ── Level 3: Retailer table ───────────────────────────────── */
+  .retailer-table-wrap { overflow-x: auto; }
+
+  .retailer-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.875rem;
+  }
+
+  .retailer-table th {
+    font-family: var(--font-mono);
+    font-size: 0.63rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--muted);
+    text-align: left;
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--border);
+    font-weight: 500;
+    white-space: nowrap;
+  }
+
+  .retailer-table td {
+    padding: 14px 16px;
+    border-bottom: 1px solid rgba(42,42,58,0.6);
+    vertical-align: middle;
+  }
+
+  .retailer-table tbody tr:last-child td { border-bottom: none; }
+
+  .retailer-table tbody tr:hover td { background: rgba(255,255,255,0.02); }
+
+  .cell-retailer { font-weight: 500; }
+
+  .cell-variant {
+    font-size: 0.8rem;
+    color: var(--muted);
+  }
+
+  .cell-price {
+    font-family: var(--font-mono);
+    font-size: 0.8rem;
+    color: var(--yellow);
+    white-space: nowrap;
+  }
+
+  .cell-price.no-price { color: var(--muted); }
+
+  .retailer-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    color: var(--muted);
+    text-decoration: none;
+    border: 1px solid var(--border);
+    padding: 5px 12px;
+    border-radius: 4px;
+    transition: border-color 0.2s, color 0.2s, background 0.2s;
+    white-space: nowrap;
+  }
+
+  .retailer-link:hover { border-color: var(--yellow); color: var(--yellow); }
+
+  .retailer-link.link-live {
+    border-color: rgba(255,215,0,0.35);
+    color: var(--yellow);
+  }
+
+  .retailer-link.link-live:hover { background: rgba(255,215,0,0.08); }
+
+  .no-link {
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    color: var(--muted);
+  }
+
+  /* ── State messages ────────────────────────────────────────── */
   .state-msg {
     font-family: var(--font-mono);
     font-size: 0.8rem;
@@ -371,7 +573,7 @@
     text-align: center;
   }
 
-  /* FOOTER */
+  /* ── Footer ────────────────────────────────────────────────── */
   footer {
     border-top: 1px solid var(--border);
     padding: 24px 0;
@@ -408,16 +610,20 @@
 
   .github-link:hover { border-color: var(--yellow); color: var(--yellow); }
 
-  /* ANIMATIONS */
+  /* ── Animations ────────────────────────────────────────────── */
   @keyframes fadeSlideIn {
     from { opacity: 0; transform: translateY(8px); }
     to   { opacity: 1; transform: translateY(0); }
   }
 
-  /* RESPONSIVE */
+  /* ── Responsive ────────────────────────────────────────────── */
   @media (max-width: 600px) {
     .hero-stats { gap: 20px; }
     .hero-strip::after { display: none; }
+    .product-card { flex-wrap: wrap; }
+    .product-card-right { flex-direction: row; align-items: center; }
+    .retailer-table th,
+    .retailer-table td { padding: 10px 12px; }
   }
 </style>
 </head>
@@ -458,23 +664,51 @@
 </div>
 
 <div class="container">
-  <div class="filters-bar">
-    <span class="filter-label">Filter:</span>
-    <button class="filter-btn active" data-filter="all">All</button>
-    <button class="filter-btn" data-filter="etb">ETB</button>
-    <button class="filter-btn" data-filter="box">Booster Box</button>
-    <button class="filter-btn" data-filter="collection">Collection</button>
-    <button class="filter-btn" data-filter="pack">Booster Pack</button>
+
+  <!-- Search bar — only visible at Level 1 -->
+  <div class="filters-bar" id="search-bar-row">
+    <span class="filter-label">Search:</span>
+    <input
+      class="search-input"
+      id="search-input"
+      type="text"
+      placeholder="Set name, series or product type…"
+      autocomplete="off"
+    />
   </div>
 
   <div class="content">
+
+    <!-- Breadcrumb — visible at Level 2 and 3 -->
+    <nav class="breadcrumb hidden" id="breadcrumb" aria-label="Navigation">
+      <button class="back-btn" id="back-btn" onclick="goBack()">← Back</button>
+      <span class="breadcrumb-sep">/</span>
+      <span class="breadcrumb-label" id="breadcrumb-label"></span>
+    </nav>
+
+    <!-- Section header -->
     <div class="section-header">
-      <h2 class="section-title">UPCOMING RELEASES</h2>
+      <h2 class="section-title" id="section-title">UPCOMING RELEASES</h2>
       <span class="section-count" id="visible-count">—</span>
     </div>
-    <div class="releases-list" id="releases-list">
-      <p class="state-msg">Loading...</p>
+
+    <!-- Level 1: Release calendar -->
+    <div id="sets-view">
+      <div class="releases-list" id="releases-list">
+        <p class="state-msg">Loading…</p>
+      </div>
     </div>
+
+    <!-- Level 2: Products within a set -->
+    <div id="set-detail-view" class="hidden">
+      <div class="products-list" id="products-list"></div>
+    </div>
+
+    <!-- Level 3: Retailer table for a product type -->
+    <div id="product-detail-view" class="hidden">
+      <div id="retailer-detail"></div>
+    </div>
+
   </div>
 </div>
 
@@ -484,7 +718,7 @@
       PokeAlert UK — Fan-made tracker. Not affiliated with Nintendo, Game Freak or The Pokémon Company.<br>
       Stock availability is checked periodically. Always verify on retailer sites before purchasing.
     </div>
-    <a href="https://github.com" class="github-link" target="_blank">
+    <a href="https://github.com" class="github-link" target="_blank" rel="noopener">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.374 0 0 5.373 0 12c0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23A11.509 11.509 0 0112 5.803c1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576C20.566 21.797 24 17.3 24 12c0-6.627-5.373-12-12-12z"/></svg>
       View on GitHub
     </a>
@@ -494,154 +728,431 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script src="config.js"></script>
 <script>
-// ── Tag config ────────────────────────────────────────────────
-const TAG_MAP = {
-  etb:        { label: 'ETB',          cls: 'tag-etb' },
-  box:        { label: 'Booster Box',  cls: 'tag-box' },
-  collection: { label: 'Collection',  cls: 'tag-collection' },
-  pack:       { label: 'Booster Pack', cls: 'tag-pack' },
+'use strict';
+
+// ── Product type config ───────────────────────────────────────
+// Ordered as specified: Booster Box, ETB, Special Collections,
+// Tins, Booster Packs, Blisters
+const TYPE_ORDER = {
+  booster_box:  1,
+  etb:          2,
+  collection:   3,
+  tin:          4,
+  booster_pack: 5,
+  blister:      6,
 };
 
-// ── Status config ─────────────────────────────────────────────
-const STATUS_MAP = {
-  available: { dot: 'dot-available', label: 'Available' },
-  preorder:  { dot: 'dot-preorder',  label: 'Pre-order' },
-  soldout:   { dot: 'dot-soldout',   label: 'Sold Out'  },
-  unknown:   { dot: 'dot-unknown',   label: 'Check Site'},
+const TYPE_LABELS = {
+  booster_box:  'Booster Box',
+  etb:          'Elite Trainer Box',
+  collection:   'Special Collection',
+  tin:          'Tins',
+  booster_pack: 'Booster Packs',
+  blister:      'Blisters',
 };
 
-// ── State ─────────────────────────────────────────────────────
-let releases = [];   // enriched release objects
-let activeFilter = 'all';
+// ── Status display — context-dependent labels ─────────────────
+// Set level (Level 1 & 2): bubble-up label
+const SET_STATUS = {
+  preorder:  { label: 'Pre-order Live',    cls: 'pill-preorder'  },
+  available: { label: 'Launching Soon',    cls: 'pill-available' },
+  soldout:   { label: 'Announced',         cls: 'pill-soldout'   },
+  unknown:   { label: 'Not Yet Announced', cls: 'pill-unknown'   },
+};
 
-// ── Supabase ──────────────────────────────────────────────────
+// Retailer level (Level 3 table)
+const RETAILER_STATUS = {
+  preorder:  { label: 'Live',       cls: 'pill-preorder'  },
+  available: { label: 'In Stock',   cls: 'pill-available' },
+  soldout:   { label: 'Sold Out',   cls: 'pill-soldout'   },
+  unknown:   { label: 'Not Listed', cls: 'pill-unknown'   },
+};
+
+// ── Status priority (higher = better for bubble-up) ───────────
+const STATUS_PRIORITY = { available: 3, preorder: 2, soldout: 1, unknown: 0 };
+
+// ── App state ─────────────────────────────────────────────────
+let allReleases       = [];   // raw rows from releases table
+let productsByRelease = {};   // { release_id: [product, …] }
+let stockByProduct    = {};   // { product_id: [stock_row, …] }
+
+let viewState = {
+  view:        'sets',  // 'sets' | 'set-detail' | 'product-detail'
+  releaseId:   null,
+  productType: null,
+};
+
+let searchQuery = '';
+
+// ── Status helpers ────────────────────────────────────────────
+function bubbleStatus(statuses) {
+  if (!statuses.length) return 'unknown';
+  return statuses.reduce(
+    (best, s) => (STATUS_PRIORITY[s] ?? 0) > (STATUS_PRIORITY[best] ?? 0) ? s : best,
+    'unknown'
+  );
+}
+
+function getReleaseStatus(release) {
+  const products = productsByRelease[release.id] ?? [];
+  return bubbleStatus(
+    products.flatMap(p => (stockByProduct[p.id] ?? []).map(s => s.status))
+  );
+}
+
+function getProductTypeStatus(products) {
+  return bubbleStatus(
+    products.flatMap(p => (stockByProduct[p.id] ?? []).map(s => s.status))
+  );
+}
+
+function getBestPrice(stockRows) {
+  const prices = stockRows
+    .map(s => parseFloat(s.price))
+    .filter(p => !isNaN(p) && p > 0);
+  return prices.length ? Math.min(...prices) : null;
+}
+
+// ── Date formatting (no Date object — avoids timezone drift) ──
+const MONTH_NAMES = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+function formatDate(dateStr) {
+  if (!dateStr) return null;
+  const parts = dateStr.split('-').map(Number);
+  return { day: parts[2], month: MONTH_NAMES[parts[1] - 1].toUpperCase(), year: parts[0] };
+}
+
+// ── Data loading ──────────────────────────────────────────────
 async function loadData() {
   const db = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-  const [{ data: releaseRows, error: relErr }, { data: stockRows, error: stockErr }] =
-    await Promise.all([
-      db.table('releases').select('*').order('release_date', { ascending: true }),
-      db.table('stock').select('*'),
-    ]);
+  const [relRes, prodRes, stockRes] = await Promise.all([
+    db.table('releases').select('*').order('release_date', { ascending: true, nullsFirst: false }),
+    db.table('products').select('*'),
+    db.table('stock').select('*'),
+  ]);
 
-  if (relErr || stockErr) {
+  if (relRes.error || prodRes.error || stockRes.error) {
     document.getElementById('releases-list').innerHTML =
-      '<p class="state-msg">Failed to load data. Please try again later.</p>';
-    console.error('Supabase error:', relErr || stockErr);
+      '<p class="state-msg">Failed to load data — please try again later.</p>';
+    console.error(relRes.error || prodRes.error || stockRes.error);
     return;
   }
 
-  // Group stock rows by release_id
-  const stockByRelease = {};
-  for (const row of stockRows) {
-    (stockByRelease[row.release_id] ??= []).push(row);
+  allReleases = relRes.data;
+
+  productsByRelease = {};
+  for (const p of prodRes.data) {
+    (productsByRelease[p.release_id] ??= []).push(p);
   }
 
-  releases = releaseRows.map(r => ({
-    id:          r.id,
-    name:        r.name,
-    series:      r.series,
-    releaseDate: new Date(r.release_date),
-    products:    r.products ?? [],
-    featured:    r.featured ?? false,
-    retailers:   (stockByRelease[r.id] ?? []).map(s => ({
-      name:   s.retailer,
-      status: s.status,
-      url:    s.url,
-    })),
-  }));
+  stockByProduct = {};
+  for (const s of stockRes.data) {
+    (stockByProduct[s.product_id] ??= []).push(s);
+  }
 
-  // Header: most recent last_checked across all stock rows
-  const latest = stockRows.reduce((max, r) => r.last_checked > max ? r.last_checked : max, '');
-  if (latest) {
-    const d = new Date(latest);
+  // Header: latest last_checked across all stock rows
+  const latestTs = stockRes.data.reduce((max, r) =>
+    (r.last_checked > max ? r.last_checked : max), '');
+  if (latestTs) {
+    const d = new Date(latestTs);
     document.getElementById('last-updated').textContent =
       d.toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
   }
 
   // Hero stats
-  const distinctRetailers = new Set(stockRows.map(r => r.retailer)).size;
-  const preorderCount = releases.filter(r => r.retailers.some(ret => ret.status === 'preorder')).length;
-  document.getElementById('stat-sets').textContent      = releases.length;
-  document.getElementById('stat-preorders').textContent = preorderCount;
+  const preorderSets     = allReleases.filter(r => getReleaseStatus(r) === 'preorder').length;
+  const distinctRetailers = new Set(stockRes.data.map(s => s.retailer)).size;
+  document.getElementById('stat-sets').textContent      = allReleases.length;
+  document.getElementById('stat-preorders').textContent = preorderSets;
   document.getElementById('stat-retailers').textContent = distinctRetailers || '—';
 
-  renderList();
+  renderView();
 }
 
-// ── Render ────────────────────────────────────────────────────
-function formatDate(d) {
-  return {
-    day:   d.getDate(),
-    month: d.toLocaleString('en-GB', { month: 'short' }).toUpperCase(),
-    year:  d.getFullYear(),
-  };
+// ── Navigation ────────────────────────────────────────────────
+function goToSet(releaseId) {
+  viewState = { view: 'set-detail', releaseId, productType: null };
+  renderView();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
-function tagHtml(product) {
-  const t = TAG_MAP[product];
-  if (t) return `<span class="tag ${t.cls}">${t.label}</span>`;
-  // Fallback: humanise the raw string
-  const label = product.replace(/_/g, ' ').toUpperCase();
-  return `<span class="tag tag-default">${label}</span>`;
+function goToProductType(releaseId, productType) {
+  viewState = { view: 'product-detail', releaseId, productType };
+  renderView();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
-function retailerPillHtml(ret) {
-  const s = STATUS_MAP[ret.status] ?? STATUS_MAP.unknown;
-  const safeUrl = ret.url ? encodeURI(ret.url) : '#';
-  return `<a href="${safeUrl}" target="_blank" rel="noopener" class="retailer-pill">
-    <span class="dot ${s.dot}"></span>${ret.name} — ${s.label}
-  </a>`;
+function goBack() {
+  if (viewState.view === 'product-detail') {
+    viewState = { view: 'set-detail', releaseId: viewState.releaseId, productType: null };
+  } else {
+    viewState = { view: 'sets', releaseId: null, productType: null };
+  }
+  renderView();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
-function cardHtml(r) {
-  const { day, month, year } = formatDate(r.releaseDate);
-  const tags      = r.products.map(tagHtml).join('');
-  const retailers = r.retailers.map(retailerPillHtml).join('');
+// ── View switcher ─────────────────────────────────────────────
+function renderView() {
+  const setsView       = document.getElementById('sets-view');
+  const setDetailView  = document.getElementById('set-detail-view');
+  const prodDetailView = document.getElementById('product-detail-view');
+  const breadcrumb     = document.getElementById('breadcrumb');
+  const searchBarRow   = document.getElementById('search-bar-row');
+  const sectionTitle   = document.getElementById('section-title');
+  const backBtn        = document.getElementById('back-btn');
+  const crumbLabel     = document.getElementById('breadcrumb-label');
+
+  setsView.classList.add('hidden');
+  setDetailView.classList.add('hidden');
+  prodDetailView.classList.add('hidden');
+
+  if (viewState.view === 'sets') {
+    setsView.classList.remove('hidden');
+    breadcrumb.classList.add('hidden');
+    searchBarRow.style.display = '';
+    sectionTitle.textContent   = 'UPCOMING RELEASES';
+    renderSetsView();
+
+  } else if (viewState.view === 'set-detail') {
+    setDetailView.classList.remove('hidden');
+    breadcrumb.classList.remove('hidden');
+    searchBarRow.style.display = 'none';
+    const rel = allReleases.find(r => r.id === viewState.releaseId);
+    backBtn.textContent   = '← All Sets';
+    crumbLabel.textContent = rel?.name ?? '';
+    sectionTitle.textContent = (rel?.name ?? 'Set Detail').toUpperCase();
+    renderSetDetailView(viewState.releaseId);
+
+  } else if (viewState.view === 'product-detail') {
+    prodDetailView.classList.remove('hidden');
+    breadcrumb.classList.remove('hidden');
+    searchBarRow.style.display = 'none';
+    const rel       = allReleases.find(r => r.id === viewState.releaseId);
+    const typeLabel = TYPE_LABELS[viewState.productType]
+      ?? viewState.productType.replace(/_/g, ' ');
+    backBtn.textContent    = `← ${rel?.name ?? 'Back'}`;
+    crumbLabel.textContent  = typeLabel;
+    sectionTitle.textContent = typeLabel.toUpperCase();
+    renderProductDetailView(viewState.releaseId, viewState.productType);
+  }
+}
+
+// ── Level 1: Release calendar ─────────────────────────────────
+function renderSetsView() {
+  const q = searchQuery.toLowerCase();
+
+  const filtered = q
+    ? allReleases.filter(r => {
+        const products = productsByRelease[r.id] ?? [];
+        return (
+          r.name.toLowerCase().includes(q) ||
+          r.series.toLowerCase().includes(q) ||
+          products.some(p =>
+            p.name.toLowerCase().includes(q) ||
+            (TYPE_LABELS[p.type] ?? '').toLowerCase().includes(q)
+          )
+        );
+      })
+    : allReleases;
+
+  const list = document.getElementById('releases-list');
+
+  if (!filtered.length) {
+    list.innerHTML = '<p class="state-msg">No releases found.</p>';
+    document.getElementById('visible-count').textContent = '0 sets';
+    return;
+  }
+
+  list.innerHTML = filtered.map(setCardHtml).join('');
+  const n = filtered.length;
+  document.getElementById('visible-count').textContent = `${n} set${n !== 1 ? 's' : ''}`;
+}
+
+function setCardHtml(r) {
+  const status   = getReleaseStatus(r);
+  const s        = SET_STATUS[status] ?? SET_STATUS.unknown;
+  const products = productsByRelease[r.id] ?? [];
+  const date     = formatDate(r.release_date);
+
+  const dateHtml = date
+    ? `<div class="date-day">${date.day}</div>
+       <div class="date-month">${date.month} ${date.year}</div>`
+    : `<div class="date-tbc">TBC</div>`;
+
+  const countLabel = products.length
+    ? `<span class="product-count-badge">${products.length} product${products.length !== 1 ? 's' : ''}</span>`
+    : '';
 
   return `
-    <div class="release-card ${r.featured ? 'featured' : ''}" data-products="${r.products.join(' ')}">
+    <div class="release-card${r.featured ? ' featured' : ''}" onclick="goToSet(${r.id})">
       <div class="card-body">
         <div class="card-top">
           <div>
             <div class="card-name">${r.name}</div>
             <div class="card-series">${r.series}</div>
           </div>
-          <div class="card-date">
-            <div class="date-day">${day}</div>
-            <div class="date-month">${month} ${year}</div>
-          </div>
+          <div class="card-date">${dateHtml}</div>
         </div>
-        ${tags      ? `<div class="card-tags">${tags}</div>` : ''}
-        ${retailers ? `<div class="retailers-row">${retailers}</div>` : ''}
+        <div class="card-status-row">
+          <span class="status-pill ${s.cls}">${s.label}</span>
+          ${countLabel}
+        </div>
       </div>
     </div>`;
 }
 
-function renderList() {
-  const filtered = activeFilter === 'all'
-    ? releases
-    : releases.filter(r => r.products.includes(activeFilter));
+// ── Level 2: Products within a set ───────────────────────────
+function renderSetDetailView(releaseId) {
+  const products = productsByRelease[releaseId] ?? [];
+  const list     = document.getElementById('products-list');
 
-  const list = document.getElementById('releases-list');
-  if (filtered.length === 0) {
-    list.innerHTML = '<p class="state-msg">No releases found.</p>';
-  } else {
-    list.innerHTML = filtered.map(cardHtml).join('');
+  if (!products.length) {
+    list.innerHTML = '<p class="state-msg">No products listed yet for this set.</p>';
+    document.getElementById('visible-count').textContent = '—';
+    return;
   }
 
-  const n = filtered.length;
-  document.getElementById('visible-count').textContent = `${n} set${n !== 1 ? 's' : ''}`;
+  // Group by type (handles tin variants etc.)
+  const byType = {};
+  for (const p of products) {
+    (byType[p.type] ??= []).push(p);
+  }
+
+  // Sort types by canonical order, then sort_order within each type
+  const sortedTypes = Object.keys(byType).sort(
+    (a, b) => (TYPE_ORDER[a] ?? 99) - (TYPE_ORDER[b] ?? 99)
+  );
+
+  list.innerHTML = sortedTypes.map(type => productTypeCardHtml(releaseId, type, byType[type])).join('');
+
+  const n = sortedTypes.length;
+  document.getElementById('visible-count').textContent = `${n} product type${n !== 1 ? 's' : ''}`;
 }
 
-// ── Filters ───────────────────────────────────────────────────
-document.querySelectorAll('.filter-btn').forEach(btn => {
-  btn.addEventListener('click', () => {
-    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
-    activeFilter = btn.dataset.filter;
-    renderList();
+function productTypeCardHtml(releaseId, type, products) {
+  const typeLabel = TYPE_LABELS[type] ?? type.replace(/_/g, ' ');
+  const status    = getProductTypeStatus(products);
+  const s         = SET_STATUS[status] ?? SET_STATUS.unknown;
+
+  const allStock  = products.flatMap(p => stockByProduct[p.id] ?? []);
+  const bestPrice = getBestPrice(allStock);
+  const priceHtml = bestPrice != null
+    ? `<span class="product-price">from £${bestPrice.toFixed(2)}</span>`
+    : '';
+
+  // Sub-label: single product shows its name; multiple (e.g. tins) shows variant count
+  const subLabel = products.length === 1
+    ? products[0].name
+    : `${products.length} variants`;
+
+  return `
+    <div class="product-card" onclick="goToProductType(${releaseId}, '${type}')">
+      <div class="product-card-left">
+        <div class="product-type-label">${typeLabel}</div>
+        <div class="product-name-sub">${subLabel}</div>
+      </div>
+      <div class="product-card-right">
+        <span class="status-pill ${s.cls}">${s.label}</span>
+        ${priceHtml}
+      </div>
+    </div>`;
+}
+
+// ── Level 3: Retailer table ───────────────────────────────────
+function renderProductDetailView(releaseId, productType) {
+  const products  = (productsByRelease[releaseId] ?? []).filter(p => p.type === productType);
+  const container = document.getElementById('retailer-detail');
+
+  if (!products.length) {
+    container.innerHTML = '<p class="state-msg">No product data available.</p>';
+    document.getElementById('visible-count').textContent = '—';
+    return;
+  }
+
+  // Collect all (product, stock_row) pairs
+  const rows = products.flatMap(p =>
+    (stockByProduct[p.id] ?? []).map(s => ({ product: p, stock: s }))
+  );
+
+  if (!rows.length) {
+    container.innerHTML = '<p class="state-msg">No retailer data available yet.</p>';
+    document.getElementById('visible-count').textContent = '0 retailers';
+    return;
+  }
+
+  // Sort: best status first, then alphabetically by retailer
+  rows.sort((a, b) => {
+    const diff = (STATUS_PRIORITY[b.stock.status] ?? 0) - (STATUS_PRIORITY[a.stock.status] ?? 0);
+    return diff !== 0 ? diff : a.stock.retailer.localeCompare(b.stock.retailer);
   });
+
+  // Show a Variant column only when there are multiple products (e.g. tins)
+  const multiVariant = products.length > 1;
+
+  const distinctRetailers = new Set(rows.map(r => r.stock.retailer)).size;
+  document.getElementById('visible-count').textContent =
+    `${distinctRetailers} retailer${distinctRetailers !== 1 ? 's' : ''}`;
+
+  const variantTh = multiVariant ? '<th>Variant</th>' : '';
+  const colspan   = multiVariant ? 5 : 4;
+
+  const tableRows = rows.map(({ product, stock }) => {
+    const s = RETAILER_STATUS[stock.status] ?? RETAILER_STATUS.unknown;
+
+    const priceHtml = (stock.price != null && parseFloat(stock.price) > 0)
+      ? `<span class="cell-price">£${parseFloat(stock.price).toFixed(2)}</span>`
+      : `<span class="cell-price no-price">—</span>`;
+
+    const isActionable = stock.url && stock.status !== 'unknown';
+    const isLive       = stock.status === 'preorder' || stock.status === 'available';
+    const linkLabel    = stock.status === 'preorder'  ? 'Pre-order →'
+                       : stock.status === 'available' ? 'Buy Now →'
+                       : stock.status === 'soldout'   ? 'View →'
+                       : null;
+
+    const linkHtml = (isActionable && linkLabel)
+      ? `<a href="${encodeURI(stock.url)}" target="_blank" rel="noopener"
+            class="retailer-link${isLive ? ' link-live' : ''}"
+         >${linkLabel}</a>`
+      : `<span class="no-link">—</span>`;
+
+    const variantTd = multiVariant ? `<td class="cell-variant">${product.name}</td>` : '';
+
+    return `
+      <tr>
+        <td class="cell-retailer">${stock.retailer}</td>
+        ${variantTd}
+        <td>${priceHtml}</td>
+        <td><span class="status-pill ${s.cls}">${s.label}</span></td>
+        <td>${linkHtml}</td>
+      </tr>`;
+  }).join('');
+
+  container.innerHTML = `
+    <div class="retailer-table-wrap">
+      <table class="retailer-table">
+        <thead>
+          <tr>
+            <th>Retailer</th>
+            ${variantTh}
+            <th>Price</th>
+            <th>Status</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          ${tableRows || `<tr><td colspan="${colspan}" class="state-msg" style="text-align:center">No retailer data yet.</td></tr>`}
+        </tbody>
+      </table>
+    </div>`;
+}
+
+// ── Search ────────────────────────────────────────────────────
+document.getElementById('search-input').addEventListener('input', function () {
+  searchQuery = this.value.trim();
+  if (viewState.view === 'sets') renderSetsView();
 });
 
 // ── Init ──────────────────────────────────────────────────────
