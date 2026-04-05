@@ -311,41 +311,6 @@ header {
 /* ── Content area ───────────────────────────────────────────── */
 .content { padding: 24px 0 64px; }
 
-/* ── Breadcrumb ─────────────────────────────────────────────── */
-.breadcrumb {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-bottom: 20px;
-  font-family: var(--font-mono);
-  font-size: 0.72rem;
-  flex-wrap: wrap;
-}
-
-.back-btn {
-  display: inline-flex;
-  align-items: center;
-  background: rgba(0,245,212,0.06);
-  border: 1px solid rgba(0,245,212,0.3);
-  color: var(--cyan);
-  padding: 0 16px;
-  height: 44px;
-  border-radius: 8px;
-  cursor: pointer;
-  font-family: var(--font-mono);
-  font-size: 0.72rem;
-  letter-spacing: 0.3px;
-  transition: all 0.2s;
-}
-
-.back-btn:hover {
-  border-color: var(--cyan);
-  box-shadow: var(--glow-cyan);
-  background: rgba(0,245,212,0.1);
-}
-
-.breadcrumb-sep { color: rgba(0,245,212,0.25); }
-.breadcrumb-label { color: var(--muted); }
 
 /* ── Section header (Level 2 & 3) ──────────────────────────── */
 .section-header {
@@ -894,6 +859,86 @@ header {
   filter: drop-shadow(0 0 12px rgba(0,245,212,0.2));
 }
 
+/* ── Sticky back FAB ────────────────────────────────────────── */
+.fab-back {
+  position: fixed;
+  bottom: 24px;
+  left: 20px;
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  border: 1px solid rgba(0,245,212,0.35);
+  background: rgba(10,0,21,0.94);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  color: var(--cyan);
+  font-size: 1.25rem;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 200;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.5), 0 0 8px rgba(0,245,212,0.12);
+}
+
+.fab-back:hover {
+  border-color: var(--cyan);
+  box-shadow: 0 4px 24px rgba(0,0,0,0.6), var(--glow-cyan);
+}
+
+/* ── Breadcrumb trail ───────────────────────────────────────── */
+.breadcrumb-trail {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 12px 0 0;
+  font-family: var(--font-mono);
+  font-size: 0.67rem;
+  flex-wrap: nowrap;
+  overflow: hidden;
+  min-width: 0;
+}
+
+.crumb-link {
+  color: var(--muted);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: color 0.15s;
+  flex-shrink: 0;
+}
+
+.crumb-link:hover { color: var(--cyan); }
+
+/* Set name in mid-crumb: allow shrinking + truncation to stay on one line */
+.crumb-link.crumb-truncate {
+  flex-shrink: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.crumb-sep {
+  color: rgba(0,245,212,0.25);
+  flex-shrink: 0;
+  font-size: 0.6rem;
+  user-select: none;
+}
+
+.crumb-current {
+  color: rgba(255,255,255,0.7);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex-shrink: 1;
+  min-width: 0;
+}
+
+@media (min-width: 640px) {
+  .fab-back { left: 28px; bottom: 32px; }
+}
+
 /* ── Footer ─────────────────────────────────────────────────── */
 footer {
   border-top: 1px solid rgba(0,245,212,0.1);
@@ -1096,12 +1141,8 @@ footer {
 
   <div class="content">
 
-    <!-- Breadcrumb — visible at Level 2 and 3 -->
-    <nav class="breadcrumb hidden" id="breadcrumb" aria-label="Navigation">
-      <button class="back-btn" id="back-btn" onclick="goBack()">← Back</button>
-      <span class="breadcrumb-sep">/</span>
-      <span class="breadcrumb-label" id="breadcrumb-label"></span>
-    </nav>
+    <!-- Breadcrumb trail — visible at Level 2 and 3 -->
+    <nav class="breadcrumb-trail hidden" id="breadcrumb" aria-label="Navigation"></nav>
 
     <!-- Section header — hidden at Level 1, shown at Level 2 & 3 -->
     <div class="section-header hidden" id="outer-section-header">
@@ -1154,6 +1195,9 @@ footer {
     </a>
   </div>
 </footer>
+
+<!-- Sticky back button — shown at Level 2 & 3 -->
+<button class="fab-back hidden" id="fab-back" onclick="goBack()" aria-label="Go back">&#8592;</button>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script>
@@ -1358,6 +1402,12 @@ async function loadData() {
 }
 
 // ── Navigation ─────────────────────────────────────────────────
+function goToView(view) {
+  viewState = { view, releaseId: null, productType: null };
+  renderView();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
 function goToSet(releaseId) {
   viewState = { view: 'set-detail', releaseId, productType: null };
   renderView();
@@ -1380,17 +1430,31 @@ function goBack() {
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
+// ── Breadcrumb builder ─────────────────────────────────────────
+function setBreadcrumb(segments) {
+  // segments: [{ label, onclick? }]  last segment is current (no onclick)
+  const trail = document.getElementById('breadcrumb');
+  trail.innerHTML = segments.map((seg, i) => {
+    const isLast = i === segments.length - 1;
+    const sep    = i > 0 ? `<span class="crumb-sep">›</span>` : '';
+    if (isLast) {
+      return `${sep}<span class="crumb-current">${seg.label}</span>`;
+    }
+    const truncCls = i > 0 ? ' crumb-truncate' : '';
+    return `${sep}<span class="crumb-link${truncCls}" onclick="${seg.onclick}">${seg.label}</span>`;
+  }).join('');
+}
+
 // ── View switcher ──────────────────────────────────────────────
 function renderView() {
-  const setsView        = document.getElementById('sets-view');
-  const setDetailView   = document.getElementById('set-detail-view');
-  const prodDetailView  = document.getElementById('product-detail-view');
-  const breadcrumb      = document.getElementById('breadcrumb');
-  const searchBarRow    = document.getElementById('search-bar-row');
-  const outerSecHeader  = document.getElementById('outer-section-header');
-  const sectionTitle    = document.getElementById('section-title');
-  const backBtn         = document.getElementById('back-btn');
-  const crumbLabel      = document.getElementById('breadcrumb-label');
+  const setsView       = document.getElementById('sets-view');
+  const setDetailView  = document.getElementById('set-detail-view');
+  const prodDetailView = document.getElementById('product-detail-view');
+  const breadcrumb     = document.getElementById('breadcrumb');
+  const fabBack        = document.getElementById('fab-back');
+  const searchBarRow   = document.getElementById('search-bar-row');
+  const outerSecHeader = document.getElementById('outer-section-header');
+  const sectionTitle   = document.getElementById('section-title');
 
   setsView.classList.add('hidden');
   setDetailView.classList.add('hidden');
@@ -1399,6 +1463,7 @@ function renderView() {
   if (viewState.view === 'sets') {
     setsView.classList.remove('hidden');
     breadcrumb.classList.add('hidden');
+    fabBack.classList.add('hidden');
     outerSecHeader.classList.add('hidden');
     searchBarRow.style.display = '';
     renderSetsView();
@@ -1406,24 +1471,31 @@ function renderView() {
   } else if (viewState.view === 'set-detail') {
     setDetailView.classList.remove('hidden');
     breadcrumb.classList.remove('hidden');
+    fabBack.classList.remove('hidden');
     outerSecHeader.classList.remove('hidden');
     searchBarRow.style.display = 'none';
     const rel = allReleases.find(r => r.id === viewState.releaseId);
-    backBtn.textContent    = '← All Sets';
-    crumbLabel.textContent  = rel?.name ?? '';
+    setBreadcrumb([
+      { label: 'All Sets', onclick: 'goBack()' },
+      { label: rel?.name ?? 'Set' },
+    ]);
     sectionTitle.textContent = (rel?.name ?? 'Set Detail').toUpperCase();
     renderSetDetailView(viewState.releaseId);
 
   } else if (viewState.view === 'product-detail') {
     prodDetailView.classList.remove('hidden');
     breadcrumb.classList.remove('hidden');
+    fabBack.classList.remove('hidden');
     outerSecHeader.classList.remove('hidden');
     searchBarRow.style.display = 'none';
     const rel       = allReleases.find(r => r.id === viewState.releaseId);
     const typeLabel = TYPE_LABELS[viewState.productType]
       ?? viewState.productType.replace(/_/g, ' ');
-    backBtn.textContent    = `← ${rel?.name ?? 'Back'}`;
-    crumbLabel.textContent  = typeLabel;
+    setBreadcrumb([
+      { label: 'All Sets',   onclick: `goToView('sets')` },
+      { label: rel?.name ?? 'Set', onclick: `goToSet(${viewState.releaseId})` },
+      { label: typeLabel },
+    ]);
     sectionTitle.textContent = typeLabel.toUpperCase();
     renderProductDetailView(viewState.releaseId, viewState.productType);
   }
