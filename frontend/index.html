@@ -629,66 +629,401 @@ header {
 }
 
 /* ── Level 2: Product type cards ───────────────────────────── */
-.products-list { display: flex; flex-direction: column; gap: 10px; }
+.products-grid { display: flex; flex-direction: column; gap: 12px; }
 
 .product-card {
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 12px;
-  padding: 16px 18px;
-  cursor: pointer;
-  transition: all 0.25s;
+  overflow: hidden;
   animation: fadeSlideIn 0.4s ease both;
+  transition: border-color 0.25s, box-shadow 0.25s;
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  min-height: 72px;
+  flex-direction: column;
 }
 
 .product-card:has(.pill-preorder)  { border-color: rgba(0,245,212,0.28);  }
 .product-card:has(.pill-available) { border-color: rgba(255,45,155,0.28); }
 .product-card:has(.pill-soldout)   { border-color: rgba(255,34,85,0.22);  }
 
-.product-card:hover { transform: translateY(-1px); }
 .product-card:has(.pill-preorder):hover  { border-color: var(--cyan);   box-shadow: var(--glow-cyan);   }
 .product-card:has(.pill-available):hover { border-color: var(--pink);   box-shadow: var(--glow-pink);   }
 .product-card:has(.pill-soldout):hover   { border-color: var(--red);    box-shadow: var(--glow-red);    }
-.product-card:has(.pill-unknown):hover   { border-color: var(--purple); box-shadow: var(--glow-purple); }
 
-.product-card-left { display: flex; flex-direction: column; gap: 4px; flex: 1; min-width: 0; }
+.product-card-main {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 14px 16px 10px;
+}
+
+.product-card-img-wrap {
+  position: relative;
+  width: 60px;
+  height: 60px;
+  border-radius: 8px;
+  overflow: hidden;
+  flex-shrink: 0;
+  background: rgba(123,47,255,0.1);
+  border: 1px solid rgba(123,47,255,0.15);
+}
+
+.product-card-img-wrap img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.product-card-img-wrap.img-error img { display: none; }
+
+.product-card-img-placeholder {
+  position: relative;
+  width: 60px;
+  height: 60px;
+  border-radius: 8px;
+  background: rgba(123,47,255,0.07);
+  border: 1px solid rgba(123,47,255,0.18);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.product-type-abbr {
+  position: absolute;
+  bottom: 3px;
+  right: 3px;
+  font-family: var(--font-mono);
+  font-size: 0.48rem;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  background: rgba(10,0,21,0.82);
+  color: var(--cyan);
+  padding: 1px 4px;
+  border-radius: 3px;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.product-card-img-placeholder .product-type-abbr {
+  position: static;
+  font-size: 0.6rem;
+  padding: 3px 6px;
+}
+
+.product-card-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.product-card-top-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.product-card-labels { min-width: 0; flex: 1; }
 
 .product-type-label {
   font-family: var(--font-display);
-  font-size: 1.2rem;
+  font-size: 1.15rem;
   letter-spacing: 1px;
   line-height: 1.1;
   color: var(--text);
 }
 
 .product-name-sub {
-  font-size: 0.73rem;
+  font-size: 0.72rem;
   color: var(--muted);
   font-weight: 300;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  margin-top: 2px;
 }
 
-.product-card-right {
+.product-card-meta {
   display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 6px;
-  flex-shrink: 0;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 
 .product-price {
   font-family: var(--font-mono);
-  font-size: 0.75rem;
+  font-size: 0.72rem;
   color: var(--cyan);
-  text-shadow: 0 0 6px rgba(0,245,212,0.4);
 }
+
+.not-available-label {
+  font-family: var(--font-mono);
+  font-size: 0.58rem;
+  color: var(--muted);
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+.product-card-footer {
+  padding: 0 16px 14px;
+}
+
+.product-card-no-stock { opacity: 0.6; }
+
+/* ── View Retailers button ───────────────────────────────────── */
+.view-retailers-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 38px;
+  border-radius: 8px;
+  border: 1px solid rgba(0,245,212,0.3);
+  background: transparent;
+  color: var(--cyan);
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  letter-spacing: 0.3px;
+  white-space: nowrap;
+}
+
+.view-retailers-btn:hover {
+  border-color: var(--cyan);
+  background: rgba(0,245,212,0.07);
+  box-shadow: 0 0 10px rgba(0,245,212,0.2);
+}
+
+.view-retailers-btn:disabled {
+  opacity: 0.3;
+  cursor: default;
+  border-color: var(--border);
+  color: var(--muted);
+  pointer-events: none;
+}
+
+/* ── Track toggle switch ─────────────────────────────────────── */
+.track-toggle {
+  position: relative;
+  display: inline-block;
+  width: 40px;
+  height: 22px;
+  flex-shrink: 0;
+  cursor: pointer;
+}
+
+.track-toggle input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+  position: absolute;
+}
+
+.track-toggle-track {
+  position: absolute;
+  inset: 0;
+  border-radius: 11px;
+  border: 1px solid rgba(0,245,212,0.3);
+  background: var(--bg);
+  transition: all 0.25s;
+}
+
+.track-toggle-thumb {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--muted);
+  transition: all 0.25s;
+  pointer-events: none;
+}
+
+.track-toggle input:checked ~ .track-toggle-track {
+  background: rgba(0,245,212,0.1);
+  border-color: var(--cyan);
+  box-shadow: 0 0 8px rgba(0,245,212,0.3);
+}
+
+.track-toggle input:checked ~ .track-toggle-thumb {
+  transform: translateX(18px);
+  background: var(--cyan);
+  box-shadow: 0 0 6px rgba(0,245,212,0.7);
+}
+
+/* ── Master toggle row ───────────────────────────────────────── */
+.master-toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 11px 16px;
+  margin-bottom: 14px;
+  background: rgba(0,245,212,0.03);
+  border: 1px solid rgba(0,245,212,0.1);
+  border-radius: 10px;
+  animation: fadeSlideIn 0.3s ease both;
+}
+
+.master-toggle-label {
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+}
+
+/* ── Set detail header (Level 2 logo + name) ─────────────────── */
+.set-detail-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 10px;
+  margin-bottom: 20px;
+  padding-bottom: 18px;
+  border-bottom: 1px solid rgba(0,245,212,0.1);
+  animation: fadeSlideIn 0.3s ease both;
+}
+
+.set-detail-logo img {
+  max-height: 68px;
+  max-width: 100%;
+  object-fit: contain;
+  filter: drop-shadow(0 0 10px rgba(0,245,212,0.3));
+}
+
+.set-detail-name {
+  font-family: var(--font-display);
+  font-size: 1.45rem;
+  letter-spacing: 3px;
+  color: var(--text);
+  text-shadow: 0 0 20px rgba(255,255,255,0.15), 0 0 40px rgba(0,245,212,0.1);
+}
+
+/* ── Empty state ─────────────────────────────────────────────── */
+.empty-state {
+  border: 1.5px dashed rgba(0,245,212,0.18);
+  border-radius: 16px;
+  padding: 52px 24px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  color: var(--muted);
+  animation: fadeSlideIn 0.4s ease both;
+}
+
+.empty-state-title {
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+  letter-spacing: 2px;
+  color: var(--text);
+}
+
+.empty-state-sub {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  color: var(--muted);
+  line-height: 1.65;
+  max-width: 280px;
+}
+
+/* ── Login modal ─────────────────────────────────────────────── */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.75);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  z-index: 400;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.modal-overlay.hidden { display: none !important; }
+
+.modal-box {
+  background: #0f0026;
+  border: 1px solid rgba(0,245,212,0.2);
+  border-radius: 16px;
+  padding: 32px 28px;
+  max-width: 380px;
+  width: 100%;
+  box-shadow: 0 0 60px rgba(0,245,212,0.07), 0 24px 80px rgba(0,0,0,0.7);
+  animation: slideUp 0.25s ease;
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.modal-title {
+  font-family: var(--font-display);
+  font-size: 1.7rem;
+  letter-spacing: 2px;
+  color: var(--text);
+  margin-bottom: 10px;
+}
+
+.modal-sub {
+  font-size: 0.83rem;
+  color: var(--muted);
+  line-height: 1.7;
+  margin-bottom: 28px;
+}
+
+.modal-google-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  height: 48px;
+  border-radius: 10px;
+  border: 1px solid rgba(0,245,212,0.35);
+  background: rgba(0,245,212,0.07);
+  color: var(--cyan);
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  cursor: pointer;
+  transition: all 0.2s;
+  margin-bottom: 14px;
+}
+
+.modal-google-btn:hover {
+  border-color: var(--cyan);
+  background: rgba(0,245,212,0.13);
+  box-shadow: var(--glow-cyan);
+}
+
+.modal-later-btn {
+  display: block;
+  width: 100%;
+  background: none;
+  border: none;
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  color: var(--muted);
+  cursor: pointer;
+  text-align: center;
+  padding: 6px;
+  transition: color 0.15s;
+}
+
+.modal-later-btn:hover { color: var(--text); }
 
 /* ── Level 3: Retailer table (desktop) ─────────────────────── */
 .retailer-table-wrap { overflow-x: auto; }
@@ -1022,6 +1357,27 @@ footer {
 
   .hero-strip { padding: 52px 0 0; }
   .hero-stats { gap: 32px; }
+
+  /* Products grid: 2-col at 640px */
+  .products-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+  }
+
+  /* View Retailers: inline (not full-width) on desktop */
+  .product-card-footer { display: flex; justify-content: flex-end; }
+  .view-retailers-btn { width: auto; padding: 0 20px; }
+
+  /* Set detail header: row on desktop */
+  .set-detail-header {
+    flex-direction: row;
+    text-align: left;
+    align-items: center;
+    gap: 20px;
+  }
+  .set-detail-logo { flex-shrink: 0; }
+  .set-detail-logo img { max-height: 76px; max-width: 240px; }
 }
 
 @media (min-width: 900px) {
@@ -1029,6 +1385,9 @@ footer {
   #released-list.releases-list {
     grid-template-columns: repeat(3, 1fr);
   }
+
+  /* Products grid: 3-col at 900px */
+  .products-grid { grid-template-columns: repeat(3, 1fr); }
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -1043,26 +1402,11 @@ footer {
   /* Full-width search */
   .search-input { width: 100%; max-width: 100%; }
 
-  /* Full-width KMP button on mobile */
-  .kmp-btn {
-    width: 100%;
-    height: 44px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-
   .card-logo { height: 36px; }
   .card-logo img { max-height: 36px; max-width: 160px; }
 
-  /* Product card wraps on mobile */
-  .product-card { flex-wrap: wrap; gap: 10px; }
-  .product-card-right {
-    flex-direction: row;
-    align-items: center;
-    justify-content: space-between;
-    width: 100%;
-  }
+  /* Product card on mobile — View Retailers full width (already default) */
+  .view-retailers-btn { height: 42px; }
 
   /* ── Retailer table → stacked cards on mobile ──────────────── */
   .retailer-table-wrap { overflow-x: unset; }
@@ -1154,8 +1498,7 @@ footer {
     <div id="sets-view">
       <div class="section-block">
         <div class="section-header-row">
-          <h2 class="section-heading">UPCOMING</h2>
-          <span class="section-count" id="upcoming-count">—</span>
+          <h2 class="section-heading" id="upcoming-heading">UPCOMING</h2>
         </div>
         <div class="releases-list" id="upcoming-list">
           <p class="state-msg">Loading…</p>
@@ -1163,8 +1506,7 @@ footer {
       </div>
       <div class="section-block">
         <div class="section-header-row">
-          <h2 class="section-heading">RELEASED</h2>
-          <span class="section-count" id="released-count">—</span>
+          <h2 class="section-heading" id="released-heading">RELEASED</h2>
         </div>
         <div class="releases-list" id="released-list"></div>
       </div>
@@ -1172,7 +1514,8 @@ footer {
 
     <!-- Level 2: Products within a set -->
     <div id="set-detail-view" class="hidden">
-      <div class="products-list" id="products-list"></div>
+      <div id="set-detail-top"></div>
+      <div class="products-grid" id="products-list"></div>
     </div>
 
     <!-- Level 3: Retailer table for a product type -->
@@ -1198,6 +1541,19 @@ footer {
 
 <!-- Sticky back button — shown at Level 2 & 3 -->
 <button class="fab-back hidden" id="fab-back" onclick="goBack()" aria-label="Go back">&#8592;</button>
+
+<!-- Login modal -->
+<div class="modal-overlay hidden" id="login-modal">
+  <div class="modal-box">
+    <div class="modal-title">Stay in the loop</div>
+    <p class="modal-sub">Sign in to track this product and get notified when it's available to pre-order or back in stock.</p>
+    <button class="modal-google-btn" onclick="closeLoginModal()">
+      <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.874 2.684-6.615z" fill="#4285F4"/><path d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332C2.438 15.983 5.482 18 9 18z" fill="#34A853"/><path d="M3.964 10.71A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.042l3.007-2.332z" fill="#FBBC05"/><path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0 5.482 0 2.438 2.017.957 4.958L3.964 6.29C4.672 4.163 6.656 3.58 9 3.58z" fill="#EA4335"/></svg>
+      Sign in with Google
+    </button>
+    <button class="modal-later-btn" onclick="closeLoginModal()">Maybe later</button>
+  </div>
+</div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script>
@@ -1249,6 +1605,10 @@ let viewState = {
 };
 
 let searchQuery = '';
+
+// ── Tracking state (session-local) ────────────────────────────
+let trackedProducts       = new Set(); // keys: `${releaseId}-${type}`
+let modalShownThisSession = false;
 
 // ── Status helpers ─────────────────────────────────────────────
 function bubbleStatus(statuses) {
@@ -1350,14 +1710,54 @@ function hasStockData(release) {
   return products.some(p => (stockByProduct[p.id] ?? []).length > 0);
 }
 
-// ── Keep Me Posted ─────────────────────────────────────────────
-function keepMePosted(btn) {
-  btn.textContent = 'Notifications coming soon';
-  btn.disabled = true;
-  setTimeout(() => {
-    btn.textContent = 'Keep Me Posted';
-    btn.disabled = false;
-  }, 2500);
+// ── Toggle tracking ─────────────────────────────────────────────
+function toggleTrack(key, input, releaseId) {
+  if (input.checked) {
+    trackedProducts.add(key);
+    if (!modalShownThisSession) {
+      modalShownThisSession = true;
+      document.getElementById('login-modal').classList.remove('hidden');
+    }
+  } else {
+    trackedProducts.delete(key);
+  }
+  updateMasterToggle(releaseId);
+}
+
+function setMasterToggle(releaseId, on) {
+  if (on && !modalShownThisSession) {
+    modalShownThisSession = true;
+    document.getElementById('login-modal').classList.remove('hidden');
+  }
+  const products = productsByRelease[releaseId] ?? [];
+  const types = [...new Set(products.map(p => p.type))];
+  types.forEach(t => {
+    const key = `${releaseId}-${t}`;
+    if (on) trackedProducts.add(key); else trackedProducts.delete(key);
+    const el = document.getElementById(`toggle-${releaseId}-${t}`);
+    if (el) el.checked = on;
+  });
+  const masterEl = document.getElementById(`master-toggle-${releaseId}`);
+  if (masterEl) { masterEl.checked = on; masterEl.indeterminate = false; }
+}
+
+function updateMasterToggle(releaseId) {
+  const products = productsByRelease[releaseId] ?? [];
+  const types = [...new Set(products.map(p => p.type))];
+  if (!types.length) return;
+  const masterEl = document.getElementById(`master-toggle-${releaseId}`);
+  if (!masterEl) return;
+  const allOn = types.every(t => trackedProducts.has(`${releaseId}-${t}`));
+  masterEl.checked = allOn;
+  masterEl.indeterminate = false;
+}
+
+function showLoginModal() {
+  document.getElementById('login-modal').classList.remove('hidden');
+}
+
+function closeLoginModal() {
+  document.getElementById('login-modal').classList.add('hidden');
 }
 
 // ── Data loading ───────────────────────────────────────────────
@@ -1520,7 +1920,6 @@ function renderSetsView() {
       })
     : allReleases;
 
-  // Upcoming: no date or future date — soonest first, null dates last
   const upcoming = filtered
     .filter(r => !r.release_date || r.release_date > today)
     .sort((a, b) => {
@@ -1530,27 +1929,37 @@ function renderSetsView() {
       return a.release_date.localeCompare(b.release_date);
     });
 
-  // Released: past or today — most recent first
   const released = filtered
     .filter(r => r.release_date && r.release_date <= today)
     .sort((a, b) => b.release_date.localeCompare(a.release_date));
 
+  document.getElementById('upcoming-heading').textContent = `UPCOMING (${upcoming.length})`;
+  document.getElementById('released-heading').textContent = `RELEASED (${released.length})`;
+
+  const emptyStateHtml = (label) => `
+    <div class="empty-state">
+      <svg width="72" height="60" viewBox="0 0 72 60" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="6" y="14" width="60" height="40" rx="4"/>
+        <line x1="6" y1="22" x2="66" y2="22"/>
+        <rect x="14" y="6" width="44" height="10" rx="2"/>
+        <circle cx="36" cy="41" r="7"/>
+        <path d="M29 41 Q36 35 43 41"/>
+        <line x1="36" y1="34" x2="36" y2="27"/>
+      </svg>
+      <div class="empty-state-title">No ${label} releases right now</div>
+      <div class="empty-state-sub">Check back soon or track a set to get notified</div>
+    </div>`;
+
   document.getElementById('upcoming-list').innerHTML = upcoming.length
     ? upcoming.map(r => setCardHtml(r, true)).join('')
-    : '<p class="state-msg">No upcoming releases.</p>';
+    : emptyStateHtml('upcoming');
 
   document.getElementById('released-list').innerHTML = released.length
     ? released.map(r => setCardHtml(r, false)).join('')
-    : '<p class="state-msg">No released sets.</p>';
-
-  document.getElementById('upcoming-count').textContent =
-    `${upcoming.length} set${upcoming.length !== 1 ? 's' : ''}`;
-  document.getElementById('released-count').textContent =
-    `${released.length} set${released.length !== 1 ? 's' : ''}`;
+    : emptyStateHtml('released');
 }
 
 function setCardHtml(r, inUpcoming) {
-  const status    = getReleaseStatus(r);
   const s         = getSetDisplayState(r);
   const products  = productsByRelease[r.id] ?? [];
   const hasStock  = hasStockData(r);
@@ -1582,11 +1991,7 @@ function setCardHtml(r, inUpcoming) {
     extraBadge = `<span class="new-badge">NEW</span>`;
   }
 
-  const kmpBtn = status !== 'available'
-    ? `<button class="kmp-btn" onclick="keepMePosted(this);event.stopPropagation()">Keep Me Posted</button>`
-    : '';
-
-  const clickAttr = hasStock ? ` onclick="goToSet(${r.id})"` : '';
+  const clickAttr   = hasStock ? ` onclick="goToSet(${r.id})"` : '';
   const disabledCls = hasStock ? '' : ' card-disabled';
 
   return `
@@ -1604,7 +2009,6 @@ function setCardHtml(r, inUpcoming) {
           <span class="status-pill ${s.cls}">${s.label}</span>
           ${extraBadge}
           ${countLabel}
-          ${kmpBtn}
         </div>
       </div>
     </div>`;
@@ -1614,8 +2018,11 @@ function setCardHtml(r, inUpcoming) {
 function renderSetDetailView(releaseId) {
   const products = productsByRelease[releaseId] ?? [];
   const list     = document.getElementById('products-list');
+  const top      = document.getElementById('set-detail-top');
+  const rel      = allReleases.find(r => r.id === releaseId);
 
   if (!products.length) {
+    top.innerHTML  = '';
     list.innerHTML = '<p class="state-msg">No products listed yet for this set.</p>';
     document.getElementById('visible-count').textContent = '—';
     return;
@@ -1630,7 +2037,39 @@ function renderSetDetailView(releaseId) {
     (a, b) => (TYPE_ORDER[a] ?? 99) - (TYPE_ORDER[b] ?? 99)
   );
 
+  // Set logo + name header
+  top.innerHTML = rel?.image_url
+    ? `<div class="set-detail-header">
+         <div class="set-detail-logo">
+           <img src="${rel.image_url}" alt="${rel.name}" loading="lazy"
+                onerror="this.parentElement.style.display='none'">
+         </div>
+         <div class="set-detail-name">${rel.name}</div>
+       </div>
+       <div class="master-toggle-row">
+         <span class="master-toggle-label">Track All Products</span>
+         <label class="track-toggle">
+           <input type="checkbox" id="master-toggle-${releaseId}"
+                  onchange="setMasterToggle(${releaseId}, this.checked)">
+           <span class="track-toggle-track"></span>
+           <span class="track-toggle-thumb"></span>
+         </label>
+       </div>`
+    : `<div class="set-detail-header">
+         <div class="set-detail-name">${rel?.name ?? ''}</div>
+       </div>
+       <div class="master-toggle-row">
+         <span class="master-toggle-label">Track All Products</span>
+         <label class="track-toggle">
+           <input type="checkbox" id="master-toggle-${releaseId}"
+                  onchange="setMasterToggle(${releaseId}, this.checked)">
+           <span class="track-toggle-track"></span>
+           <span class="track-toggle-thumb"></span>
+         </label>
+       </div>`;
+
   list.innerHTML = sortedTypes.map(type => productTypeCardHtml(releaseId, type, byType[type])).join('');
+  updateMasterToggle(releaseId);
 
   const n = sortedTypes.length;
   document.getElementById('visible-count').textContent = `${n} product type${n !== 1 ? 's' : ''}`;
@@ -1639,36 +2078,73 @@ function renderSetDetailView(releaseId) {
 function productTypeCardHtml(releaseId, type, products) {
   const typeLabel = TYPE_LABELS[type] ?? type.replace(/_/g, ' ');
   const status    = getProductTypeStatus(products);
-  const s         = getProductDisplayState(status);
-
   const allStock  = products.flatMap(p => stockByProduct[p.id] ?? []);
-  const bestPrice = getBestPrice(allStock);
-  const priceHtml = bestPrice != null
-    ? `<span class="product-price">from £${bestPrice.toFixed(2)}</span>`
-    : '';
+  const hasStock  = allStock.length > 0;
+  const key       = `${releaseId}-${type}`;
+  const tracked   = trackedProducts.has(key);
+  const rel       = allReleases.find(r => r.id === releaseId);
+
+  // Product image: first real product image from stock, else set logo
+  const productImg = allStock.map(s => s.image_url).find(u => u) ?? rel?.image_url ?? null;
+
+  const typeAbbr = { booster_box: 'BOX', etb: 'ETB', collection: 'COLL', tin: 'TIN', booster_pack: 'PACK', blister: 'BLSTR' }[type] ?? type.slice(0,3).toUpperCase();
+
+  const imgHtml = productImg
+    ? `<div class="product-card-img-wrap">
+         <img src="${productImg}" alt="${typeLabel}" loading="lazy"
+              onerror="this.parentElement.classList.add('img-error')">
+         <span class="product-type-abbr">${typeAbbr}</span>
+       </div>`
+    : `<div class="product-card-img-placeholder">
+         <span class="product-type-abbr">${typeAbbr}</span>
+       </div>`;
 
   const subLabel = products.length === 1
     ? products[0].name
     : `${products.length} variants`;
 
-  const kmpBtn = status !== 'available'
-    ? `<button class="kmp-btn" onclick="keepMePosted(this);event.stopPropagation()">Keep Me Posted</button>`
-    : '';
+  let metaHtml = '';
+  if (hasStock) {
+    const s = getProductDisplayState(status);
+    const bestPrice = getBestPrice(allStock);
+    metaHtml = `<div class="product-card-meta">
+      <span class="status-pill ${s.cls}">${s.label}</span>
+      ${bestPrice != null ? `<span class="product-price">from £${bestPrice.toFixed(2)}</span>` : ''}
+    </div>`;
+  } else {
+    metaHtml = `<div class="product-card-meta">
+      <span class="not-available-label">Not yet available</span>
+    </div>`;
+  }
 
-  const hasStock  = allStock.length > 0;
-  const clickAttr = hasStock ? ` onclick="goToProductType(${releaseId}, '${type}')"` : '';
-  const disabledCls = hasStock ? '' : ' card-disabled';
+  const toggleHtml = `<label class="track-toggle" onclick="event.stopPropagation()" title="${tracked ? 'Tracking' : 'Track this product'}">
+    <input type="checkbox" id="toggle-${releaseId}-${type}" ${tracked ? 'checked' : ''}
+           onchange="toggleTrack('${key}', this, ${releaseId})">
+    <span class="track-toggle-track"></span>
+    <span class="track-toggle-thumb"></span>
+  </label>`;
+
+  const viewBtnHtml = hasStock
+    ? `<button class="view-retailers-btn" onclick="goToProductType(${releaseId}, '${type}')">View Retailers →</button>`
+    : `<button class="view-retailers-btn" disabled>View Retailers →</button>`;
 
   return `
-    <div class="product-card${disabledCls}"${clickAttr}>
-      <div class="product-card-left">
-        <div class="product-type-label">${typeLabel}</div>
-        <div class="product-name-sub">${subLabel}</div>
+    <div class="product-card${hasStock ? '' : ' product-card-no-stock'}">
+      <div class="product-card-main">
+        ${imgHtml}
+        <div class="product-card-info">
+          <div class="product-card-top-row">
+            <div class="product-card-labels">
+              <div class="product-type-label">${typeLabel}</div>
+              <div class="product-name-sub">${subLabel}</div>
+            </div>
+            ${toggleHtml}
+          </div>
+          ${metaHtml}
+        </div>
       </div>
-      <div class="product-card-right">
-        <span class="status-pill ${s.cls}">${s.label}</span>
-        ${priceHtml}
-        ${kmpBtn}
+      <div class="product-card-footer">
+        ${viewBtnHtml}
       </div>
     </div>`;
 }
