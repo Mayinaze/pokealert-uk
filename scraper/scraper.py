@@ -122,14 +122,17 @@ def build_upsert_rows(merged: dict[int, dict[str, dict]]) -> list[dict]:
 
     for product_id, retailers in merged.items():
         for retailer_name, info in retailers.items():
-            rows.append({
+            row = {
                 "product_id":   product_id,
                 "retailer":     retailer_name,
                 "status":       info.get("status", "unknown"),
                 "url":          info.get("url", ""),
                 "price":        None,
                 "last_checked": ts,
-            })
+            }
+            if info.get("image_url"):
+                row["image_url"] = info["image_url"]
+            rows.append(row)
 
     return rows
 

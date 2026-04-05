@@ -25,6 +25,8 @@ import logging
 import requests
 from bs4 import BeautifulSoup
 
+from .utils import extract_og_image
+
 log = logging.getLogger(__name__)
 
 BASE_URL   = "https://www.amazon.co.uk"
@@ -60,10 +62,10 @@ def _is_captcha_page(text: str) -> bool:
     )
 
 
-def get_status_from_page(url: str) -> str:
+def get_status_from_page(url: str) -> tuple[str, str | None]:
     """
     Fetch an Amazon product page and determine stock status.
-    Returns: 'available' | 'preorder' | 'soldout' | 'unknown'
+    Returns: ('available' | 'preorder' | 'soldout' | 'unknown', image_url | None)
     """
     try:
         resp = SESSION.get(url, timeout=15)
@@ -71,37 +73,38 @@ def get_status_from_page(url: str) -> str:
 
         if _is_captcha_page(resp.text):
             log.warning(f"Amazon: CAPTCHA detected at {url} — returning unknown")
-            return "unknown"
+            return "unknown", None
 
         soup = BeautifulSoup(resp.text, "lxml")
+        image_url = extract_og_image(soup)
         page_text = soup.get_text(" ", strip=True).lower()
 
         if "pre-order" in page_text or "preorder" in page_text:
-            return "preorder"
+            return "preorder", image_url
         if "in stock" in page_text and "out of stock" not in page_text:
-            return "available"
+            return "available", image_url
         if (
             "currently unavailable" in page_text
             or "out of stock" in page_text
             or "this item cannot be shipped" in page_text
         ):
-            return "soldout"
+            return "soldout", image_url
 
         buy_box = soup.find(id="buybox") or soup.find(id="availability")
         if buy_box:
             bb_text = buy_box.get_text(" ", strip=True).lower()
             if "pre-order" in bb_text:
-                return "preorder"
+                return "preorder", image_url
             if "in stock" in bb_text:
-                return "available"
+                return "available", image_url
             if "unavailable" in bb_text or "out of stock" in bb_text:
-                return "soldout"
+                return "soldout", image_url
 
-        return "unknown"
+        return "unknown", image_url
 
     except requests.RequestException as e:
         log.warning(f"Amazon page fetch failed for {url}: {e}")
-        return "unknown"
+        return "unknown", None
 
 
 def search_amazon(query: str) -> str | None:
@@ -163,9 +166,9 @@ def scrape_amazon(products: list[dict]) -> dict[int, dict]:
                 "url": SEARCH_URL.format(query=requests.utils.quote(name)),
             }
         else:
-            status = get_status_from_page(url)
+            status, image_url = get_status_from_page(url)
             log.info(f"  Amazon: '{name}' → {status} ({url})")
-            results[pid] = {"status": status, "url": url}
+            results[pid] = {"status": status, "url": url, "image_url": image_url}
 
         # Longer delay to reduce bot-detection probability
         time.sleep(4)

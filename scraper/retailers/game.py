@@ -14,6 +14,8 @@ import logging
 import requests
 from bs4 import BeautifulSoup
 
+from .utils import extract_og_image
+
 log = logging.getLogger(__name__)
 
 BASE_URL   = "https://www.game.co.uk"
@@ -34,15 +36,16 @@ SESSION = requests.Session()
 SESSION.headers.update(HEADERS)
 
 
-def get_status_from_page(url: str) -> str:
+def get_status_from_page(url: str) -> tuple[str, str | None]:
     """
     Fetch a GAME product page and determine stock status.
-    Returns: 'available' | 'preorder' | 'soldout' | 'unknown'
+    Returns: ('available' | 'preorder' | 'soldout' | 'unknown', image_url | None)
     """
     try:
         resp = SESSION.get(url, timeout=15)
         resp.raise_for_status()
         soup = BeautifulSoup(resp.text, "lxml")
+        image_url = extract_og_image(soup)
 
         for btn in soup.find_all(["button", "a"], class_=True):
             cls  = " ".join(btn.get("class", [])).lower()
@@ -50,25 +53,25 @@ def get_status_from_page(url: str) -> str:
             combined = cls + " " + text
 
             if "pre-order" in combined or "preorder" in combined:
-                return "preorder"
+                return "preorder", image_url
             if "add to basket" in combined or "buy now" in combined:
-                return "available"
+                return "available", image_url
             if "sold out" in combined or "out of stock" in combined:
-                return "soldout"
+                return "soldout", image_url
 
         page_text = soup.get_text(" ", strip=True).lower()
         if "pre-order" in page_text or "preorder" in page_text:
-            return "preorder"
+            return "preorder", image_url
         if "add to basket" in page_text or "in stock" in page_text:
-            return "available"
+            return "available", image_url
         if "sold out" in page_text or "out of stock" in page_text or "unavailable" in page_text:
-            return "soldout"
+            return "soldout", image_url
 
-        return "unknown"
+        return "unknown", image_url
 
     except requests.RequestException as e:
         log.warning(f"GAME page fetch failed for {url}: {e}")
-        return "unknown"
+        return "unknown", None
 
 
 def search_game(query: str) -> str | None:
@@ -118,9 +121,9 @@ def scrape_game(products: list[dict]) -> dict[int, dict]:
                 "url": SEARCH_URL.format(query=requests.utils.quote(name)),
             }
         else:
-            status = get_status_from_page(url)
+            status, image_url = get_status_from_page(url)
             log.info(f"  GAME: '{name}' → {status} ({url})")
-            results[pid] = {"status": status, "url": url}
+            results[pid] = {"status": status, "url": url, "image_url": image_url}
 
         time.sleep(2)
 

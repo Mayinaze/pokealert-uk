@@ -16,6 +16,8 @@ import logging
 import requests
 from bs4 import BeautifulSoup
 
+from .utils import extract_og_image
+
 log = logging.getLogger(__name__)
 
 BASE_URL   = "https://www.magicmadhouse.co.uk"
@@ -67,46 +69,47 @@ def _parse_shopify_available(soup: BeautifulSoup) -> str | None:
     return None
 
 
-def get_status_from_page(url: str) -> str:
+def get_status_from_page(url: str) -> tuple[str, str | None]:
     """
     Fetch a Magic Madhouse product page and determine stock status.
-    Returns: 'available' | 'preorder' | 'soldout' | 'unknown'
+    Returns: ('available' | 'preorder' | 'soldout' | 'unknown', image_url | None)
     """
     try:
         resp = SESSION.get(url, timeout=15)
         resp.raise_for_status()
         soup = BeautifulSoup(resp.text, "lxml")
+        image_url = extract_og_image(soup)
 
         schema_status = _parse_schema_status(soup)
         if schema_status:
-            return schema_status
+            return schema_status, image_url
 
         shopify_status = _parse_shopify_available(soup)
         if shopify_status:
-            return shopify_status
+            return shopify_status, image_url
 
         for el in soup.find_all(["button", "input", "a"]):
             text = (el.get("value") or el.get_text(strip=True) or "").lower()
             if "pre-order" in text or "preorder" in text:
-                return "preorder"
+                return "preorder", image_url
             if "add to basket" in text or "add to cart" in text or "buy now" in text:
-                return "available"
+                return "available", image_url
             if "out of stock" in text or "sold out" in text or "unavailable" in text:
-                return "soldout"
+                return "soldout", image_url
 
         page_text = soup.get_text(" ", strip=True).lower()
         if "pre-order" in page_text or "preorder" in page_text:
-            return "preorder"
+            return "preorder", image_url
         if "add to basket" in page_text or "in stock" in page_text:
-            return "available"
+            return "available", image_url
         if "out of stock" in page_text or "sold out" in page_text:
-            return "soldout"
+            return "soldout", image_url
 
-        return "unknown"
+        return "unknown", image_url
 
     except requests.RequestException as e:
         log.warning(f"Magic Madhouse page fetch failed for {url}: {e}")
-        return "unknown"
+        return "unknown", None
 
 
 def search_magic_madhouse(query: str) -> str | None:
@@ -151,9 +154,9 @@ def scrape_magic_madhouse(products: list[dict]) -> dict[int, dict]:
                 "url": SEARCH_URL.format(query=requests.utils.quote(name)),
             }
         else:
-            status = get_status_from_page(url)
+            status, image_url = get_status_from_page(url)
             log.info(f"  Magic Madhouse: '{name}' → {status} ({url})")
-            results[pid] = {"status": status, "url": url}
+            results[pid] = {"status": status, "url": url, "image_url": image_url}
 
         time.sleep(2)
 

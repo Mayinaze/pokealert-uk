@@ -373,15 +373,15 @@ header {
   border: 1px solid var(--border);
 }
 
-/* ── Status pills — lit neon signs ─────────────────────────── */
+/* ── Status pills — informational labels ─────────────────────── */
 .status-pill {
   font-family: var(--font-mono);
-  font-size: 0.62rem;
-  font-weight: 700;
-  padding: 4px 10px;
+  font-size: 0.58rem;
+  font-weight: 600;
+  padding: 3px 8px;
   border-radius: 4px;
   border: 1px solid;
-  letter-spacing: 0.8px;
+  letter-spacing: 0.6px;
   text-transform: uppercase;
   display: inline-block;
   white-space: nowrap;
@@ -390,37 +390,29 @@ header {
 /* Pre-order → cyan */
 .pill-preorder {
   color: var(--cyan);
-  border-color: rgba(0,245,212,0.6);
-  background: rgba(0,245,212,0.07);
-  text-shadow: 0 0 8px var(--cyan);
-  box-shadow: 0 0 8px rgba(0,245,212,0.25), inset 0 0 8px rgba(0,245,212,0.04);
+  border-color: rgba(0,245,212,0.4);
+  background: rgba(0,245,212,0.06);
 }
 
 /* In Stock → pink */
 .pill-available {
   color: var(--pink);
-  border-color: rgba(255,45,155,0.6);
-  background: rgba(255,45,155,0.07);
-  text-shadow: 0 0 8px var(--pink);
-  box-shadow: 0 0 8px rgba(255,45,155,0.25), inset 0 0 8px rgba(255,45,155,0.04);
+  border-color: rgba(255,45,155,0.4);
+  background: rgba(255,45,155,0.06);
 }
 
 /* Sold Out → red */
 .pill-soldout {
   color: var(--red);
-  border-color: rgba(255,34,85,0.6);
-  background: rgba(255,34,85,0.07);
-  text-shadow: 0 0 8px var(--red);
-  box-shadow: 0 0 8px rgba(255,34,85,0.2);
+  border-color: rgba(255,34,85,0.4);
+  background: rgba(255,34,85,0.06);
 }
 
 /* Announced / Date TBC → purple */
 .pill-unknown {
   color: var(--purple);
-  border-color: rgba(123,47,255,0.5);
-  background: rgba(123,47,255,0.07);
-  text-shadow: 0 0 8px var(--purple);
-  box-shadow: 0 0 6px rgba(123,47,255,0.2);
+  border-color: rgba(123,47,255,0.35);
+  background: rgba(123,47,255,0.06);
 }
 
 /* ── Set logo ───────────────────────────────────────────────── */
@@ -860,26 +852,47 @@ header {
   text-transform: uppercase;
 }
 
-/* ── Keep Me Posted — solid neon button ─────────────────────── */
+/* ── Keep Me Posted — dominant filled neon button ───────────── */
 .kmp-btn {
   font-family: var(--font-mono);
-  font-size: 0.7rem;
+  font-size: 0.72rem;
   font-weight: 700;
   letter-spacing: 0.5px;
-  padding: 0 16px;
-  height: 36px;
+  padding: 0 18px;
+  height: 38px;
   border-radius: 8px;
   border: 1px solid var(--cyan);
-  background: rgba(0,245,212,0.1);
-  color: var(--cyan);
+  background: var(--cyan);
+  color: #000;
   cursor: pointer;
   transition: all 0.2s;
   white-space: nowrap;
-  text-shadow: 0 0 6px rgba(0,245,212,0.5);
+  box-shadow: 0 0 10px rgba(0,245,212,0.4);
 }
 
-.kmp-btn:hover { background: rgba(0,245,212,0.18); box-shadow: var(--glow-cyan); }
+.kmp-btn:hover { background: #00ddbf; box-shadow: var(--glow-cyan); }
 .kmp-btn:disabled { opacity: 0.55; cursor: default; box-shadow: none; }
+
+/* ── Disabled card — no stock data yet ──────────────────────── */
+.card-disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+.card-disabled:hover { transform: none !important; box-shadow: none !important; }
+
+/* ── Product image header (Level 3) ─────────────────────────── */
+.product-image-header {
+  margin-bottom: 20px;
+  text-align: center;
+}
+
+.product-image-header img {
+  max-height: 180px;
+  max-width: 100%;
+  object-fit: contain;
+  border-radius: 8px;
+  filter: drop-shadow(0 0 12px rgba(0,245,212,0.2));
+}
 
 /* ── Footer ─────────────────────────────────────────────────── */
 footer {
@@ -967,9 +980,9 @@ footer {
 }
 
 @media (min-width: 900px) {
-  /* UPCOMING: 4-column grid on wide screens */
-  #upcoming-list.releases-list {
-    grid-template-columns: repeat(4, 1fr);
+  /* RELEASED: 3-column grid on wide screens */
+  #released-list.releases-list {
+    grid-template-columns: repeat(3, 1fr);
   }
 }
 
@@ -1067,37 +1080,16 @@ footer {
   </div>
 </header>
 
-<div class="hero-strip">
-  <div class="container">
-    <h1 class="hero-title">Track <em>Every Drop.</em><br>Never Miss a Set.</h1>
-    <p class="hero-sub">UK release dates, pre-order availability, and retailer stock — all in one place. Built for collectors.</p>
-    <div class="hero-stats">
-      <div class="stat">
-        <span class="stat-num" id="stat-sets">—</span>
-        <span class="stat-label">Sets Tracked</span>
-      </div>
-      <div class="stat">
-        <span class="stat-num" id="stat-preorders">—</span>
-        <span class="stat-label">Open Pre-orders</span>
-      </div>
-      <div class="stat">
-        <span class="stat-num" id="stat-retailers">—</span>
-        <span class="stat-label">Retailers Tracked</span>
-      </div>
-    </div>
-  </div>
-</div>
 
 <div class="container">
 
   <!-- Search bar — only visible at Level 1 -->
   <div class="filters-bar" id="search-bar-row">
-    <span class="filter-label">Search:</span>
     <input
       class="search-input"
       id="search-input"
       type="text"
-      placeholder="Set name, series or product type…"
+      placeholder="Search series or product type..."
       autocomplete="off"
     />
   </div>
@@ -1308,6 +1300,12 @@ function isNewRelease(dateStr) {
   return diffMs >= 0 && diffMs <= 28 * 86400000;
 }
 
+// ── Stock data check ───────────────────────────────────────────
+function hasStockData(release) {
+  const products = productsByRelease[release.id] ?? [];
+  return products.some(p => (stockByProduct[p.id] ?? []).length > 0);
+}
+
 // ── Keep Me Posted ─────────────────────────────────────────────
 function keepMePosted(btn) {
   btn.textContent = 'Notifications coming soon';
@@ -1355,13 +1353,6 @@ async function loadData() {
     document.getElementById('last-updated').textContent =
       d.toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
   }
-
-  // Hero stats
-  const preorderSets      = allReleases.filter(r => getReleaseStatus(r) === 'preorder').length;
-  const distinctRetailers = new Set(stockRes.data.map(s => s.retailer)).size;
-  document.getElementById('stat-sets').textContent      = allReleases.length;
-  document.getElementById('stat-preorders').textContent = preorderSets;
-  document.getElementById('stat-retailers').textContent = distinctRetailers || '—';
 
   renderView();
 }
@@ -1487,15 +1478,18 @@ function renderSetsView() {
 }
 
 function setCardHtml(r, inUpcoming) {
-  const status   = getReleaseStatus(r);
-  const s        = getSetDisplayState(r);
-  const products = productsByRelease[r.id] ?? [];
-  const date     = formatDate(r.release_date);
+  const status    = getReleaseStatus(r);
+  const s         = getSetDisplayState(r);
+  const products  = productsByRelease[r.id] ?? [];
+  const hasStock  = hasStockData(r);
+  const date      = formatDate(r.release_date);
 
-  const dateHtml = date
-    ? `<div class="date-day">${date.day}</div>
-       <div class="date-month">${date.month} ${date.year}</div>`
-    : `<div class="date-tbc">TBC</div>`;
+  const dateHtml = inUpcoming
+    ? (date
+        ? `<div class="date-day">${date.day}</div>
+           <div class="date-month">${date.month} ${date.year}</div>`
+        : `<div class="date-tbc">TBC</div>`)
+    : '';
 
   const countLabel = products.length
     ? `<span class="product-count-badge">${products.length} product${products.length !== 1 ? 's' : ''}</span>`
@@ -1520,8 +1514,11 @@ function setCardHtml(r, inUpcoming) {
     ? `<button class="kmp-btn" onclick="keepMePosted(this);event.stopPropagation()">Keep Me Posted</button>`
     : '';
 
+  const clickAttr = hasStock ? ` onclick="goToSet(${r.id})"` : '';
+  const disabledCls = hasStock ? '' : ' card-disabled';
+
   return `
-    <div class="release-card${r.featured ? ' featured' : ''}" onclick="goToSet(${r.id})">
+    <div class="release-card${r.featured ? ' featured' : ''}${disabledCls}"${clickAttr}>
       <div class="card-body">
         ${logoHtml}
         <div class="card-top">
@@ -1529,7 +1526,7 @@ function setCardHtml(r, inUpcoming) {
             <div class="card-name">${r.name}</div>
             <div class="card-series">${r.series}</div>
           </div>
-          <div class="card-date">${dateHtml}</div>
+          ${inUpcoming ? `<div class="card-date">${dateHtml}</div>` : ''}
         </div>
         <div class="card-status-row">
           <span class="status-pill ${s.cls}">${s.label}</span>
@@ -1586,8 +1583,12 @@ function productTypeCardHtml(releaseId, type, products) {
     ? `<button class="kmp-btn" onclick="keepMePosted(this);event.stopPropagation()">Keep Me Posted</button>`
     : '';
 
+  const hasStock  = allStock.length > 0;
+  const clickAttr = hasStock ? ` onclick="goToProductType(${releaseId}, '${type}')"` : '';
+  const disabledCls = hasStock ? '' : ' card-disabled';
+
   return `
-    <div class="product-card" onclick="goToProductType(${releaseId}, '${type}')">
+    <div class="product-card${disabledCls}"${clickAttr}>
       <div class="product-card-left">
         <div class="product-type-label">${typeLabel}</div>
         <div class="product-name-sub">${subLabel}</div>
@@ -1615,8 +1616,20 @@ function renderProductDetailView(releaseId, productType) {
     (stockByProduct[p.id] ?? []).map(s => ({ product: p, stock: s }))
   );
 
+  // Product image: first non-null image_url from stock rows, else release image_url
+  const rel = allReleases.find(r => r.id === releaseId);
+  const productImg = rows.map(r => r.stock.image_url).find(u => u)
+    ?? rel?.image_url
+    ?? null;
+  const productImgHtml = productImg
+    ? `<div class="product-image-header">
+         <img src="${productImg}" alt="Product image" loading="lazy"
+              onerror="this.parentElement.style.display='none'">
+       </div>`
+    : '';
+
   if (!rows.length) {
-    container.innerHTML = '<p class="state-msg">No retailer data available yet.</p>';
+    container.innerHTML = productImgHtml + '<p class="state-msg">No retailer data available yet.</p>';
     document.getElementById('visible-count').textContent = '0 retailers';
     return;
   }
@@ -1668,7 +1681,7 @@ function renderProductDetailView(releaseId, productType) {
       </tr>`;
   }).join('');
 
-  container.innerHTML = `
+  container.innerHTML = productImgHtml + `
     <div class="retailer-table-wrap">
       <table class="retailer-table">
         <thead>
