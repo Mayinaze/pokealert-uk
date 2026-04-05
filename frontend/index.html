@@ -638,6 +638,80 @@
     to   { opacity: 1; transform: translateY(0); }
   }
 
+  /* ── Two-section layout (UPCOMING / RELEASED) ──────────────── */
+  .section-block { margin-bottom: 40px; }
+
+  .section-header-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 16px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .section-heading {
+    font-family: var(--font-display);
+    font-size: 1.1rem;
+    letter-spacing: 3px;
+    color: var(--muted);
+  }
+
+  /* ── Countdown badge ────────────────────────────────────────── */
+  .countdown-badge {
+    font-family: var(--font-mono);
+    font-size: 0.65rem;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    padding: 3px 9px;
+    border-radius: 3px;
+    border: 1px solid rgba(255,215,0,0.35);
+    color: var(--yellow);
+    background: rgba(255,215,0,0.07);
+    white-space: nowrap;
+  }
+
+  /* ── NEW badge ──────────────────────────────────────────────── */
+  .new-badge {
+    font-family: var(--font-mono);
+    font-size: 0.6rem;
+    font-weight: 600;
+    letter-spacing: 1px;
+    padding: 2px 7px;
+    border-radius: 3px;
+    border: 1px solid rgba(74,226,160,0.5);
+    color: var(--green);
+    background: rgba(74,226,160,0.1);
+    text-transform: uppercase;
+  }
+
+  /* ── Keep Me Posted button ──────────────────────────────────── */
+  .kmp-btn {
+    font-family: var(--font-mono);
+    font-size: 0.68rem;
+    font-weight: 500;
+    padding: 5px 12px;
+    border-radius: 4px;
+    border: 1px solid var(--border);
+    background: var(--surface2);
+    color: var(--muted);
+    cursor: pointer;
+    transition: border-color 0.2s, color 0.2s;
+    white-space: nowrap;
+  }
+
+  .kmp-btn:hover { border-color: var(--yellow-dim); color: var(--text); }
+  .kmp-btn:disabled { opacity: 0.6; cursor: default; }
+
+  /* ── In-stock buy link ──────────────────────────────────────── */
+  .retailer-link.link-instock {
+    border-color: rgba(74,226,160,0.45);
+    color: var(--green);
+    font-weight: 600;
+  }
+
+  .retailer-link.link-instock:hover { background: rgba(74,226,160,0.08); }
+
   /* ── Responsive ────────────────────────────────────────────── */
   @media (max-width: 600px) {
     .hero-stats { gap: 20px; }
@@ -708,16 +782,29 @@
       <span class="breadcrumb-label" id="breadcrumb-label"></span>
     </nav>
 
-    <!-- Section header -->
-    <div class="section-header">
+    <!-- Section header — hidden at Level 1, shown at Level 2 & 3 -->
+    <div class="section-header hidden" id="outer-section-header">
       <h2 class="section-title" id="section-title">UPCOMING RELEASES</h2>
       <span class="section-count" id="visible-count">—</span>
     </div>
 
-    <!-- Level 1: Release calendar -->
+    <!-- Level 1: Release calendar — UPCOMING and RELEASED sections -->
     <div id="sets-view">
-      <div class="releases-list" id="releases-list">
-        <p class="state-msg">Loading…</p>
+      <div class="section-block">
+        <div class="section-header-row">
+          <h2 class="section-heading">UPCOMING</h2>
+          <span class="section-count" id="upcoming-count">—</span>
+        </div>
+        <div class="releases-list" id="upcoming-list">
+          <p class="state-msg">Loading…</p>
+        </div>
+      </div>
+      <div class="section-block">
+        <div class="section-header-row">
+          <h2 class="section-heading">RELEASED</h2>
+          <span class="section-count" id="released-count">—</span>
+        </div>
+        <div class="releases-list" id="released-list"></div>
       </div>
     </div>
 
@@ -755,9 +842,7 @@ const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 <script>
 'use strict';
 
-// ── Product type config ───────────────────────────────────────
-// Ordered as specified: Booster Box, ETB, Special Collections,
-// Tins, Booster Packs, Blisters
+// ── Product type config ────────────────────────────────────────
 const TYPE_ORDER = {
   booster_box:  1,
   etb:          2,
@@ -776,40 +861,31 @@ const TYPE_LABELS = {
   blister:      'Blisters',
 };
 
-// ── Status display — context-dependent labels ─────────────────
-// Set level (Level 1 & 2): bubble-up label
-const SET_STATUS = {
-  preorder:  { label: 'Pre-order Live',    cls: 'pill-preorder'  },
-  available: { label: 'Launching Soon',    cls: 'pill-available' },
-  soldout:   { label: 'Announced',         cls: 'pill-soldout'   },
-  unknown:   { label: 'Not Yet Announced', cls: 'pill-unknown'   },
-};
-
-// Retailer level (Level 3 table)
+// ── Retailer-level status display (Level 3 table) ─────────────
 const RETAILER_STATUS = {
-  preorder:  { label: 'Live',       cls: 'pill-preorder'  },
+  preorder:  { label: 'Pre-order',  cls: 'pill-preorder'  },
   available: { label: 'In Stock',   cls: 'pill-available' },
   soldout:   { label: 'Sold Out',   cls: 'pill-soldout'   },
   unknown:   { label: 'Not Listed', cls: 'pill-unknown'   },
 };
 
-// ── Status priority (higher = better for bubble-up) ───────────
+// ── Status priority (higher = better for bubble-up) ────────────
 const STATUS_PRIORITY = { available: 3, preorder: 2, soldout: 1, unknown: 0 };
 
-// ── App state ─────────────────────────────────────────────────
-let allReleases       = [];   // raw rows from releases table
-let productsByRelease = {};   // { release_id: [product, …] }
-let stockByProduct    = {};   // { product_id: [stock_row, …] }
+// ── App state ──────────────────────────────────────────────────
+let allReleases       = [];
+let productsByRelease = {};
+let stockByProduct    = {};
 
 let viewState = {
-  view:        'sets',  // 'sets' | 'set-detail' | 'product-detail'
+  view:        'sets',
   releaseId:   null,
   productType: null,
 };
 
 let searchQuery = '';
 
-// ── Status helpers ────────────────────────────────────────────
+// ── Status helpers ─────────────────────────────────────────────
 function bubbleStatus(statuses) {
   if (!statuses.length) return 'unknown';
   return statuses.reduce(
@@ -838,8 +914,34 @@ function getBestPrice(stockRows) {
   return prices.length ? Math.min(...prices) : null;
 }
 
-// ── Date formatting (no Date object — avoids timezone drift) ──
+// ── Display state helpers ──────────────────────────────────────
+// Full progression: Announced/TBC → Date Confirmed → Pre-order Live → In Stock → Sold Out
+function getSetDisplayState(r) {
+  const status = getReleaseStatus(r);
+  if (status === 'available') return { label: 'In Stock',            cls: 'pill-available' };
+  if (status === 'preorder')  return { label: 'Pre-order Live',      cls: 'pill-preorder'  };
+  if (status === 'soldout')   return { label: 'Sold Out',            cls: 'pill-soldout'   };
+  return r.release_date
+    ? { label: 'Date Confirmed',        cls: 'pill-unknown' }
+    : { label: 'Announced / Date TBC',  cls: 'pill-unknown' };
+}
+
+function getProductDisplayState(status) {
+  if (status === 'available') return { label: 'In Stock',       cls: 'pill-available' };
+  if (status === 'preorder')  return { label: 'Pre-order Live', cls: 'pill-preorder'  };
+  if (status === 'soldout')   return { label: 'Sold Out',       cls: 'pill-soldout'   };
+  return                             { label: 'Check Retailers', cls: 'pill-unknown'  };
+}
+
+// ── Date & countdown helpers ───────────────────────────────────
 const MONTH_NAMES = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+function todayStr() {
+  const d  = new Date();
+  const m  = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  return `${d.getFullYear()}-${m}-${dd}`;
+}
 
 function formatDate(dateStr) {
   if (!dateStr) return null;
@@ -847,18 +949,58 @@ function formatDate(dateStr) {
   return { day: parts[2], month: MONTH_NAMES[parts[1] - 1].toUpperCase(), year: parts[0] };
 }
 
-// ── Data loading ──────────────────────────────────────────────
+function countdownText(dateStr) {
+  if (!dateStr) return null;
+  const today = todayStr();
+  if (dateStr < today) return null;
+  if (dateStr === today) return 'Today';
+  const [ty, tm, td] = today.split('-').map(Number);
+  const [ry, rm, rd] = dateStr.split('-').map(Number);
+  // Include current local hour in the diff for the hrs component
+  const nowMs     = Date.UTC(ty, tm - 1, td) + (new Date().getHours() * 3600000);
+  const releaseMs = Date.UTC(ry, rm - 1, rd);
+  const diff = releaseMs - nowMs;
+  if (diff <= 0) return 'Today';
+  const days = Math.floor(diff / 86400000);
+  const hrs  = Math.floor((diff % 86400000) / 3600000);
+  if (days === 0) return hrs > 0 ? `${hrs} hrs` : 'Today';
+  return hrs > 0
+    ? `${days} day${days !== 1 ? 's' : ''} ${hrs} hrs`
+    : `${days} day${days !== 1 ? 's' : ''}`;
+}
+
+function isNewRelease(dateStr) {
+  if (!dateStr) return false;
+  const today = todayStr();
+  if (dateStr > today) return false;
+  const [ty, tm, td] = today.split('-').map(Number);
+  const [ry, rm, rd] = dateStr.split('-').map(Number);
+  const diffMs = Date.UTC(ty, tm - 1, td) - Date.UTC(ry, rm - 1, rd);
+  return diffMs >= 0 && diffMs <= 28 * 86400000;
+}
+
+// ── Keep Me Posted ─────────────────────────────────────────────
+function keepMePosted(btn) {
+  btn.textContent = 'Notifications coming soon';
+  btn.disabled = true;
+  setTimeout(() => {
+    btn.textContent = 'Keep Me Posted';
+    btn.disabled = false;
+  }, 2500);
+}
+
+// ── Data loading ───────────────────────────────────────────────
 async function loadData() {
   const db = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
   const [relRes, prodRes, stockRes] = await Promise.all([
-    db.from('releases').select('*').order('release_date', { ascending: true, nullsFirst: false }),
+    db.from('releases').select('*'),
     db.from('products').select('*'),
     db.from('stock').select('*'),
   ]);
 
   if (relRes.error || prodRes.error || stockRes.error) {
-    document.getElementById('releases-list').innerHTML =
+    document.getElementById('upcoming-list').innerHTML =
       '<p class="state-msg">Failed to load data — please try again later.</p>';
     console.error(relRes.error || prodRes.error || stockRes.error);
     return;
@@ -886,7 +1028,7 @@ async function loadData() {
   }
 
   // Hero stats
-  const preorderSets     = allReleases.filter(r => getReleaseStatus(r) === 'preorder').length;
+  const preorderSets      = allReleases.filter(r => getReleaseStatus(r) === 'preorder').length;
   const distinctRetailers = new Set(stockRes.data.map(s => s.retailer)).size;
   document.getElementById('stat-sets').textContent      = allReleases.length;
   document.getElementById('stat-preorders').textContent = preorderSets;
@@ -895,7 +1037,7 @@ async function loadData() {
   renderView();
 }
 
-// ── Navigation ────────────────────────────────────────────────
+// ── Navigation ─────────────────────────────────────────────────
 function goToSet(releaseId) {
   viewState = { view: 'set-detail', releaseId, productType: null };
   renderView();
@@ -918,16 +1060,17 @@ function goBack() {
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
-// ── View switcher ─────────────────────────────────────────────
+// ── View switcher ──────────────────────────────────────────────
 function renderView() {
-  const setsView       = document.getElementById('sets-view');
-  const setDetailView  = document.getElementById('set-detail-view');
-  const prodDetailView = document.getElementById('product-detail-view');
-  const breadcrumb     = document.getElementById('breadcrumb');
-  const searchBarRow   = document.getElementById('search-bar-row');
-  const sectionTitle   = document.getElementById('section-title');
-  const backBtn        = document.getElementById('back-btn');
-  const crumbLabel     = document.getElementById('breadcrumb-label');
+  const setsView        = document.getElementById('sets-view');
+  const setDetailView   = document.getElementById('set-detail-view');
+  const prodDetailView  = document.getElementById('product-detail-view');
+  const breadcrumb      = document.getElementById('breadcrumb');
+  const searchBarRow    = document.getElementById('search-bar-row');
+  const outerSecHeader  = document.getElementById('outer-section-header');
+  const sectionTitle    = document.getElementById('section-title');
+  const backBtn         = document.getElementById('back-btn');
+  const crumbLabel      = document.getElementById('breadcrumb-label');
 
   setsView.classList.add('hidden');
   setDetailView.classList.add('hidden');
@@ -936,23 +1079,25 @@ function renderView() {
   if (viewState.view === 'sets') {
     setsView.classList.remove('hidden');
     breadcrumb.classList.add('hidden');
+    outerSecHeader.classList.add('hidden');
     searchBarRow.style.display = '';
-    sectionTitle.textContent   = 'UPCOMING RELEASES';
     renderSetsView();
 
   } else if (viewState.view === 'set-detail') {
     setDetailView.classList.remove('hidden');
     breadcrumb.classList.remove('hidden');
+    outerSecHeader.classList.remove('hidden');
     searchBarRow.style.display = 'none';
     const rel = allReleases.find(r => r.id === viewState.releaseId);
-    backBtn.textContent   = '← All Sets';
-    crumbLabel.textContent = rel?.name ?? '';
+    backBtn.textContent    = '← All Sets';
+    crumbLabel.textContent  = rel?.name ?? '';
     sectionTitle.textContent = (rel?.name ?? 'Set Detail').toUpperCase();
     renderSetDetailView(viewState.releaseId);
 
   } else if (viewState.view === 'product-detail') {
     prodDetailView.classList.remove('hidden');
     breadcrumb.classList.remove('hidden');
+    outerSecHeader.classList.remove('hidden');
     searchBarRow.style.display = 'none';
     const rel       = allReleases.find(r => r.id === viewState.releaseId);
     const typeLabel = TYPE_LABELS[viewState.productType]
@@ -964,16 +1109,17 @@ function renderView() {
   }
 }
 
-// ── Level 1: Release calendar ─────────────────────────────────
+// ── Level 1: Release calendar — two sections ──────────────────
 function renderSetsView() {
-  const q = searchQuery.toLowerCase();
+  const q     = searchQuery.toLowerCase();
+  const today = todayStr();
 
   const filtered = q
     ? allReleases.filter(r => {
         const products = productsByRelease[r.id] ?? [];
         return (
           r.name.toLowerCase().includes(q) ||
-          r.series.toLowerCase().includes(q) ||
+          (r.series ?? '').toLowerCase().includes(q) ||
           products.some(p =>
             p.name.toLowerCase().includes(q) ||
             (TYPE_LABELS[p.type] ?? '').toLowerCase().includes(q)
@@ -982,22 +1128,38 @@ function renderSetsView() {
       })
     : allReleases;
 
-  const list = document.getElementById('releases-list');
+  // Upcoming: no date or future date — soonest first, null dates last
+  const upcoming = filtered
+    .filter(r => !r.release_date || r.release_date > today)
+    .sort((a, b) => {
+      if (!a.release_date && !b.release_date) return 0;
+      if (!a.release_date) return 1;
+      if (!b.release_date) return 1;
+      return a.release_date.localeCompare(b.release_date);
+    });
 
-  if (!filtered.length) {
-    list.innerHTML = '<p class="state-msg">No releases found.</p>';
-    document.getElementById('visible-count').textContent = '0 sets';
-    return;
-  }
+  // Released: past or today — most recent first
+  const released = filtered
+    .filter(r => r.release_date && r.release_date <= today)
+    .sort((a, b) => b.release_date.localeCompare(a.release_date));
 
-  list.innerHTML = filtered.map(setCardHtml).join('');
-  const n = filtered.length;
-  document.getElementById('visible-count').textContent = `${n} set${n !== 1 ? 's' : ''}`;
+  document.getElementById('upcoming-list').innerHTML = upcoming.length
+    ? upcoming.map(r => setCardHtml(r, true)).join('')
+    : '<p class="state-msg">No upcoming releases.</p>';
+
+  document.getElementById('released-list').innerHTML = released.length
+    ? released.map(r => setCardHtml(r, false)).join('')
+    : '<p class="state-msg">No released sets.</p>';
+
+  document.getElementById('upcoming-count').textContent =
+    `${upcoming.length} set${upcoming.length !== 1 ? 's' : ''}`;
+  document.getElementById('released-count').textContent =
+    `${released.length} set${released.length !== 1 ? 's' : ''}`;
 }
 
-function setCardHtml(r) {
+function setCardHtml(r, inUpcoming) {
   const status   = getReleaseStatus(r);
-  const s        = SET_STATUS[status] ?? SET_STATUS.unknown;
+  const s        = getSetDisplayState(r);
   const products = productsByRelease[r.id] ?? [];
   const date     = formatDate(r.release_date);
 
@@ -1017,6 +1179,18 @@ function setCardHtml(r) {
        </div>`
     : '';
 
+  let extraBadge = '';
+  if (inUpcoming && r.release_date) {
+    const cd = countdownText(r.release_date);
+    if (cd) extraBadge = `<span class="countdown-badge">&#x23F1; ${cd}</span>`;
+  } else if (!inUpcoming && isNewRelease(r.release_date)) {
+    extraBadge = `<span class="new-badge">NEW</span>`;
+  }
+
+  const kmpBtn = status !== 'available'
+    ? `<button class="kmp-btn" onclick="keepMePosted(this);event.stopPropagation()">Keep Me Posted</button>`
+    : '';
+
   return `
     <div class="release-card${r.featured ? ' featured' : ''}" onclick="goToSet(${r.id})">
       <div class="card-body">
@@ -1030,13 +1204,15 @@ function setCardHtml(r) {
         </div>
         <div class="card-status-row">
           <span class="status-pill ${s.cls}">${s.label}</span>
+          ${extraBadge}
           ${countLabel}
+          ${kmpBtn}
         </div>
       </div>
     </div>`;
 }
 
-// ── Level 2: Products within a set ───────────────────────────
+// ── Level 2: Products within a set ────────────────────────────
 function renderSetDetailView(releaseId) {
   const products = productsByRelease[releaseId] ?? [];
   const list     = document.getElementById('products-list');
@@ -1047,13 +1223,11 @@ function renderSetDetailView(releaseId) {
     return;
   }
 
-  // Group by type (handles tin variants etc.)
   const byType = {};
   for (const p of products) {
     (byType[p.type] ??= []).push(p);
   }
 
-  // Sort types by canonical order, then sort_order within each type
   const sortedTypes = Object.keys(byType).sort(
     (a, b) => (TYPE_ORDER[a] ?? 99) - (TYPE_ORDER[b] ?? 99)
   );
@@ -1067,7 +1241,7 @@ function renderSetDetailView(releaseId) {
 function productTypeCardHtml(releaseId, type, products) {
   const typeLabel = TYPE_LABELS[type] ?? type.replace(/_/g, ' ');
   const status    = getProductTypeStatus(products);
-  const s         = SET_STATUS[status] ?? SET_STATUS.unknown;
+  const s         = getProductDisplayState(status);
 
   const allStock  = products.flatMap(p => stockByProduct[p.id] ?? []);
   const bestPrice = getBestPrice(allStock);
@@ -1075,10 +1249,13 @@ function productTypeCardHtml(releaseId, type, products) {
     ? `<span class="product-price">from £${bestPrice.toFixed(2)}</span>`
     : '';
 
-  // Sub-label: single product shows its name; multiple (e.g. tins) shows variant count
   const subLabel = products.length === 1
     ? products[0].name
     : `${products.length} variants`;
+
+  const kmpBtn = status !== 'available'
+    ? `<button class="kmp-btn" onclick="keepMePosted(this);event.stopPropagation()">Keep Me Posted</button>`
+    : '';
 
   return `
     <div class="product-card" onclick="goToProductType(${releaseId}, '${type}')">
@@ -1089,11 +1266,12 @@ function productTypeCardHtml(releaseId, type, products) {
       <div class="product-card-right">
         <span class="status-pill ${s.cls}">${s.label}</span>
         ${priceHtml}
+        ${kmpBtn}
       </div>
     </div>`;
 }
 
-// ── Level 3: Retailer table ───────────────────────────────────
+// ── Level 3: Retailer table ────────────────────────────────────
 function renderProductDetailView(releaseId, productType) {
   const products  = (productsByRelease[releaseId] ?? []).filter(p => p.type === productType);
   const container = document.getElementById('retailer-detail');
@@ -1104,7 +1282,6 @@ function renderProductDetailView(releaseId, productType) {
     return;
   }
 
-  // Collect all (product, stock_row) pairs
   const rows = products.flatMap(p =>
     (stockByProduct[p.id] ?? []).map(s => ({ product: p, stock: s }))
   );
@@ -1115,15 +1292,12 @@ function renderProductDetailView(releaseId, productType) {
     return;
   }
 
-  // Sort: best status first, then alphabetically by retailer
   rows.sort((a, b) => {
     const diff = (STATUS_PRIORITY[b.stock.status] ?? 0) - (STATUS_PRIORITY[a.stock.status] ?? 0);
     return diff !== 0 ? diff : a.stock.retailer.localeCompare(b.stock.retailer);
   });
 
-  // Show a Variant column only when there are multiple products (e.g. tins)
-  const multiVariant = products.length > 1;
-
+  const multiVariant      = products.length > 1;
   const distinctRetailers = new Set(rows.map(r => r.stock.retailer)).size;
   document.getElementById('visible-count').textContent =
     `${distinctRetailers} retailer${distinctRetailers !== 1 ? 's' : ''}`;
@@ -1138,17 +1312,19 @@ function renderProductDetailView(releaseId, productType) {
       ? `<span class="cell-price">£${parseFloat(stock.price).toFixed(2)}</span>`
       : `<span class="cell-price no-price">—</span>`;
 
-    const isActionable = stock.url && stock.status !== 'unknown';
-    const isLive       = stock.status === 'preorder' || stock.status === 'available';
-    const linkLabel    = stock.status === 'preorder'  ? 'Pre-order →'
-                       : stock.status === 'available' ? 'Buy Now →'
-                       : stock.status === 'soldout'   ? 'View →'
-                       : null;
+    // Always show link if URL exists, regardless of status
+    const hasUrl    = !!stock.url;
+    const isLive    = stock.status === 'preorder' || stock.status === 'available';
+    const linkLabel = stock.status === 'preorder'  ? 'Pre-order →'
+                    : stock.status === 'available' ? 'Buy Now →'
+                    : 'View →';
+    const linkCls   = stock.status === 'available' ? 'retailer-link link-instock'
+                    : isLive                       ? 'retailer-link link-live'
+                    : 'retailer-link';
 
-    const linkHtml = (isActionable && linkLabel)
+    const linkHtml = hasUrl
       ? `<a href="${encodeURI(stock.url)}" target="_blank" rel="noopener"
-            class="retailer-link${isLive ? ' link-live' : ''}"
-         >${linkLabel}</a>`
+            class="${linkCls}">${linkLabel}</a>`
       : `<span class="no-link">—</span>`;
 
     const variantTd = multiVariant ? `<td class="cell-variant">${product.name}</td>` : '';
@@ -1182,13 +1358,13 @@ function renderProductDetailView(releaseId, productType) {
     </div>`;
 }
 
-// ── Search ────────────────────────────────────────────────────
+// ── Search ─────────────────────────────────────────────────────
 document.getElementById('search-input').addEventListener('input', function () {
   searchQuery = this.value.trim();
   if (viewState.view === 'sets') renderSetsView();
 });
 
-// ── Init ──────────────────────────────────────────────────────
+// ── Init ───────────────────────────────────────────────────────
 loadData();
 </script>
 </body>

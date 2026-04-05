@@ -1,18 +1,17 @@
 """
 Smyths Toys Scraper
 ====================
-Smyths is a major UK toy retailer stocking Pokémon TCG.
-Their site is slightly more guarded but workable with the right headers.
+smythstoys.com — major UK toy retailer, strong Pokémon TCG range.
 
 Strategy:
-- Search by product name (e.g. "Prismatic Evolutions Elite Trainer Box")
-- Parse product page for availability indicators
-
-NOTE: Smyths may serve a challenge page or bot check.
-If this returns 'unknown' consistently, consider using
-Playwright or Selenium for JS rendering.
+- Search by full product name (e.g. "Prismatic Evolutions Elite Trainer Box")
+- Fallback: search by set name only (strips product-type suffix) if full search fails
+  Smyths often lists products with sub-set names (e.g. "Chaos Rising") that differ
+  from our DB, so a bare set-name search has a better hit rate.
+- Parse product page for availability via schema.org JSON-LD or page text.
 """
 
+import json
 import time
 import logging
 import requests
@@ -27,12 +26,53 @@ HEADERS = {
     "User-Agent": (
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
         "AppleWebKit/537.36 (KHTML, like Gecko) "
-        "Chrome/120.0.0.0 Safari/537.36"
+        "Chrome/124.0.0.0 Safari/537.36"
     ),
     "Accept-Language": "en-GB,en;q=0.9",
     "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
     "Referer": "https://www.smythstoys.com/uk/en-gb/",
 }
+
+# Suffixes stripped when falling back to set-name-only search
+_PRODUCT_SUFFIXES = (
+    " Elite Trainer Box",
+    " Booster Box",
+    " Booster Pack",
+    " Collection Box",
+    " Tin",
+)
+
+SESSION = requests.Session()
+SESSION.headers.update(HEADERS)
+
+
+def _extract_set_name(product_name: str) -> str:
+    """Strip known product-type suffixes to get the bare set name."""
+    for suffix in _PRODUCT_SUFFIXES:
+        if product_name.lower().endswith(suffix.lower()):
+            return product_name[: -len(suffix)].strip()
+    return product_name
+
+
+def _parse_schema_status(soup: BeautifulSoup) -> str | None:
+    for tag in soup.find_all("script", type="application/ld+json"):
+        try:
+            data = json.loads(tag.string or "")
+            items = data if isinstance(data, list) else [data]
+            for item in items:
+                avail = (item.get("offers") or {}).get("availability", "")
+                if not avail and isinstance(item.get("offers"), list):
+                    avail = (item["offers"][0] if item["offers"] else {}).get("availability", "")
+                avail = avail.lower()
+                if "preorder" in avail or "presale" in avail:
+                    return "preorder"
+                if "instock" in avail:
+                    return "available"
+                if "outofstock" in avail or "discontinued" in avail:
+                    return "soldout"
+        except (json.JSONDecodeError, AttributeError):
+            continue
+    return None
 
 
 def get_status_from_page(url: str) -> str:
@@ -41,11 +81,15 @@ def get_status_from_page(url: str) -> str:
     Returns: 'available' | 'preorder' | 'soldout' | 'unknown'
     """
     try:
-        resp = requests.get(url, headers=HEADERS, timeout=15)
+        resp = SESSION.get(url, timeout=15)
         resp.raise_for_status()
-        soup = BeautifulSoup(resp.text, "html.parser")
+        soup = BeautifulSoup(resp.text, "lxml")
 
-        page_text = soup.get_text().lower()
+        schema_status = _parse_schema_status(soup)
+        if schema_status:
+            return schema_status
+
+        page_text = soup.get_text(" ", strip=True).lower()
 
         if "pre-order" in page_text or "preorder" in page_text:
             return "preorder"
@@ -61,30 +105,43 @@ def get_status_from_page(url: str) -> str:
         return "unknown"
 
 
+def _find_product_link(soup: BeautifulSoup) -> str | None:
+    """Return the first product URL (/p/...) found in a search result page."""
+    for a in soup.find_all("a", href=True):
+        href = a["href"]
+        if "/p/" in href and "pokemon" in href.lower():
+            return href if href.startswith("http") else f"{BASE_URL}{href}"
+    for a in soup.find_all("a", href=True):
+        href = a["href"]
+        if "/p/" in href:
+            return href if href.startswith("http") else f"{BASE_URL}{href}"
+    return None
+
+
 def search_smyths(query: str) -> str | None:
-    """Search Smyths and return URL of best matching product."""
-    try:
-        clean_query = query.replace("—", "").replace("  ", " ").strip()
-        url = SEARCH_URL.format(query=requests.utils.quote(clean_query))
-        resp = requests.get(url, headers=HEADERS, timeout=15)
-        resp.raise_for_status()
-        soup = BeautifulSoup(resp.text, "html.parser")
+    """
+    Search Smyths and return URL of best matching product.
+    Falls back to set-name-only search if the full product name returns nothing.
+    """
+    queries_to_try = [query]
+    set_name = _extract_set_name(query)
+    if set_name != query:
+        queries_to_try.append(set_name)
 
-        for a in soup.find_all("a", href=True):
-            href = a["href"]
-            if "/p/" in href and "pokemon" in href.lower():
-                return href if href.startswith("http") else f"{BASE_URL}{href}"
+    for q in queries_to_try:
+        try:
+            url = SEARCH_URL.format(query=requests.utils.quote(q))
+            resp = SESSION.get(url, timeout=15)
+            resp.raise_for_status()
+            soup = BeautifulSoup(resp.text, "lxml")
+            link = _find_product_link(soup)
+            if link:
+                log.debug(f"  Smyths: found link via query '{q}'")
+                return link
+        except requests.RequestException as e:
+            log.warning(f"Smyths search failed for '{q}': {e}")
 
-        for a in soup.find_all("a", href=True):
-            href = a["href"]
-            if "/p/" in href:
-                return href if href.startswith("http") else f"{BASE_URL}{href}"
-
-        return None
-
-    except requests.RequestException as e:
-        log.warning(f"Smyths search failed for '{query}': {e}")
-        return None
+    return None
 
 
 def scrape_smyths(products: list[dict]) -> dict[int, dict]:

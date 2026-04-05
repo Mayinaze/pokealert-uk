@@ -21,7 +21,7 @@ Usage:
 import logging
 import re
 import time
-from datetime import datetime
+from datetime import datetime, timezone
 
 import requests
 from bs4 import BeautifulSoup
@@ -44,8 +44,26 @@ HEADERS = {
     "Accept-Language": "en-GB,en;q=0.9",
 }
 
-# Only track these series (update when a new generation launches)
-TRACKED_SERIES = {"Scarlet & Violet"}
+# Headings on Bulbapedia that are not TCG series names — skip these sections
+_SKIP_HEADINGS = {
+    "see also", "references", "notes", "external links",
+    "external link", "history", "contents", "navigation",
+    "reception", "promo cards",
+}
+
+# Map Bulbapedia heading text → clean series name for DB storage
+def _heading_to_series(heading: str) -> str:
+    h = heading.lower()
+    if "scarlet" in h and "violet" in h:
+        return "Scarlet & Violet"
+    if "mega evolution" in h:
+        return "Mega Evolution"
+    if "sword" in h and "shield" in h:
+        return "Sword & Shield"
+    if "sun" in h and "moon" in h:
+        return "Sun & Moon"
+    # Future eras: return cleaned heading text as-is
+    return re.sub(r"\s+era$", "", heading, flags=re.IGNORECASE).strip()
 
 # Baseline products inserted for every newly discovered set
 BASELINE_PRODUCTS = [
@@ -91,8 +109,9 @@ def _parse_uk_date(raw: str) -> str | None:
 
 def _fetch_bulbapedia() -> list[dict]:
     """
-    Fetch the Bulbapedia expansions page and return a list of
-    { name, series, release_date } dicts for Scarlet & Violet sets.
+    Fetch the Bulbapedia TCG expansions page and return all sets from
+    every generation section found (not just Scarlet & Violet).
+    The year filter in discover_and_insert handles pruning old sets.
     """
     try:
         resp = requests.get(BULBAPEDIA_URL, headers=HEADERS, timeout=15)
@@ -103,40 +122,32 @@ def _fetch_bulbapedia() -> list[dict]:
 
     soup = BeautifulSoup(resp.text, "lxml")
     sets: list[dict] = []
-
-    # Each generation of the TCG is in its own section.
-    # The Scarlet & Violet section starts with an <h2> or <h3> whose text
-    # contains "Scarlet & Violet".  Walk through every wikitable after that
-    # heading until we hit the next generation heading.
-
-    in_sv = False
-    current_series = None
+    current_series: str | None = None
 
     for tag in soup.find_all(["h2", "h3", "table"]):
+        # ── Section heading ──────────────────────────────────────────────
         if tag.name in ("h2", "h3"):
-            heading_text = tag.get_text(strip=True)
-            if "Scarlet" in heading_text and "Violet" in heading_text:
-                in_sv = True
-                current_series = "Scarlet & Violet"
-            elif in_sv:
-                # Hit the next generation heading — stop
-                break
+            raw = tag.get_text(strip=True)
+            clean = re.sub(r"\[.*?\]", "", raw).strip()
+            if any(s in clean.lower() for s in _SKIP_HEADINGS):
+                current_series = None   # stop tracking wiki meta-sections
+            else:
+                current_series = _heading_to_series(clean) if clean else None
             continue
 
-        if not in_sv:
+        # ── wikitable under a known series heading ───────────────────────
+        if not current_series:
             continue
         if "wikitable" not in (tag.get("class") or []):
             continue
 
-        # Parse rows from this table
         rows = tag.find_all("tr")
-        headers = []
+        headers: list[str] = []
         for row in rows:
             cells = row.find_all(["th", "td"])
             if not cells:
                 continue
 
-            # Header row
             if row.find("th"):
                 headers = [c.get_text(strip=True).lower() for c in cells]
                 continue
@@ -150,7 +161,6 @@ def _fetch_bulbapedia() -> list[dict]:
 
             row_dict = dict(zip(headers, row_data))
 
-            # Column names vary slightly across tables — try common variants
             name = (
                 row_dict.get("expansion")
                 or row_dict.get("set")
@@ -159,7 +169,6 @@ def _fetch_bulbapedia() -> list[dict]:
                 or ""
             ).strip()
 
-            # Date column: prefer UK / EN date, fall back to generic date
             raw_date = (
                 row_dict.get("uk release date")
                 or row_dict.get("en release date")
@@ -168,19 +177,20 @@ def _fetch_bulbapedia() -> list[dict]:
                 or ""
             ).strip()
 
-            if not name or name.lower() in ("expansion", "set", "name"):
+            if not name or name.lower() in ("expansion", "set", "name", "english name"):
                 continue
 
-            # Strip footnotes from set name
             name = re.sub(r"\[.*?\]", "", name).strip()
+            if not name:
+                continue
 
             sets.append({
                 "name":         name,
-                "series":       current_series or "Scarlet & Violet",
+                "series":       current_series,
                 "release_date": _parse_uk_date(raw_date),
             })
 
-    log.info(f"Bulbapedia: found {len(sets)} Scarlet & Violet sets")
+    log.info(f"Bulbapedia: found {len(sets)} sets across all series")
     return sets
 
 
@@ -241,10 +251,16 @@ def discover_and_insert(db: Client) -> int:
     logo_map = fetch_logo_map()
 
     inserted = 0
+    current_year = datetime.now(timezone.utc).year
 
     for s in scraped:
         if s["name"].lower() in existing:
             log.debug(f"  Already known: {s['name']}")
+            continue
+
+        # Skip sets that were fully released before the current calendar year
+        if s["release_date"] and int(s["release_date"][:4]) < current_year:
+            log.debug(f"  Skipping pre-{current_year} set: {s['name']}")
             continue
 
         image_url = match_logo(s["name"], logo_map) if logo_map else None
