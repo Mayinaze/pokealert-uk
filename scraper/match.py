@@ -40,6 +40,8 @@ RETAILER_WINDOWS: dict[str, int | None] = {
     "365 Games":        12,
     "Very":             12,
     "Amazon":           None,
+    "Tesco":            12,
+    "Asda":             12,
 }
 
 _TYPE_SUFFIXES_RE = re.compile(

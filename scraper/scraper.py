@@ -33,7 +33,7 @@ from dotenv import load_dotenv
 from supabase import create_client, Client
 
 # Retailer modules — each exposes browse_category() and get_status_from_page()
-from retailers import smyths, zatu, games365, argos, game, forbidden_planet, very, magic_madhouse, amazon
+from retailers import smyths, zatu, games365, argos, game, forbidden_planet, very, magic_madhouse, amazon, tesco, asda
 
 from match import match_product, guess_set_name
 from archiver import run_archiver
@@ -61,6 +61,8 @@ RETAILERS = [
     ("Very",             very),
     ("Magic Madhouse",   magic_madhouse),
     ("Amazon",           amazon),
+    ("Tesco",            tesco),
+    ("Asda",             asda),
 ]
 
 # ── Delay (seconds) between product-page fetches per retailer ─────────────────
@@ -69,6 +71,18 @@ FETCH_DELAY: dict[str, float] = {
     "Smyths":  2.0,
     "default": 1.5,
 }
+
+# ── Retailers that must never be stored (safeguard) ───────────────────────────
+# Normalise by removing spaces/hyphens/underscores and lowercasing before checking.
+_BLOCKED_RETAILER_SLUGS: frozenset[str] = frozenset({
+    "totalcards",
+    "totalcardsuk",
+    "totalcards.net",
+})
+
+def _is_blocked_retailer(name: str) -> bool:
+    slug = name.lower().replace(" ", "").replace("-", "").replace("_", "").replace(".", "")
+    return slug in _BLOCKED_RETAILER_SLUGS
 
 
 def get_supabase() -> Client:
@@ -162,6 +176,11 @@ def run_category_scrapers(
     }
 
     for retailer_name, module in RETAILERS:
+        # ── Blocked retailer safeguard ────────────────────────────────────────
+        if _is_blocked_retailer(retailer_name):
+            log.warning(f"BLOCKED: '{retailer_name}' is in the retailer blocklist — skipping entirely")
+            continue
+
         log.info(f"--- {retailer_name}: browsing category ---")
 
         # ── 1. Browse category page ──────────────────────────────────────────
@@ -254,6 +273,25 @@ def run_category_scrapers(
             if not image_url:
                 image_url = candidate.get("image_url")
 
+            # ── 4. Preorder URL validation ───────────────────────────────────
+            # If status is "preorder", verify the URL is not a generic search/browse
+            # page (which would produce false preorder signals). Downgrade to unknown
+            # if the URL looks like a listing page rather than a product page.
+            if status == "preorder":
+                url_lower = url.lower()
+                is_search_url = any(
+                    pattern in url_lower for pattern in (
+                        "/search", "/browse", "?q=", "?query=", "?text=", "?term=",
+                        "/search?", "?k=", "&k=",
+                    )
+                )
+                if is_search_url:
+                    log.warning(
+                        f"  {retailer_name}: preorder status rejected — URL looks like "
+                        f"a search page, not a product page: {url}"
+                    )
+                    status = "unknown"
+
             log.info(
                 f"  {retailer_name}: '{title}' → {release['name']} / {ptype} "
                 f"→ {status}"
@@ -295,8 +333,14 @@ def upsert_stock(db: Client, rows: list[dict]) -> None:
     if not rows:
         log.info("No stock rows to upsert")
         return
-    db.table("stock").upsert(rows, on_conflict="product_id,retailer").execute()
-    log.info(f"Upserted {len(rows)} stock rows")
+    # Last-resort filter: never write blocked retailers to the DB
+    clean = [r for r in rows if not _is_blocked_retailer(r.get("retailer", ""))]
+    if len(clean) < len(rows):
+        log.warning(f"Blocked {len(rows) - len(clean)} row(s) from blacklisted retailer(s) at upsert stage")
+    if not clean:
+        return
+    db.table("stock").upsert(clean, on_conflict="product_id,retailer").execute()
+    log.info(f"Upserted {len(clean)} stock rows")
 
 
 def send_notifications(
