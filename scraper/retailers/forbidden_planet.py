@@ -2,11 +2,10 @@
 Forbidden Planet Scraper
 =========================
 forbiddenplanet.com — UK-based pop culture and TCG retailer.
-Strong Pokémon TCG stock. Static HTML, scraper-friendly.
 
-Strategy:
-- Search by product name (e.g. "Prismatic Evolutions Elite Trainer Box")
-- Parse both structured data (most reliable) and button text (fallback)
+Category page approach:
+- Browse the Pokémon TCG catalogue section and collect all listed products
+- Schema.org JSON-LD is the most reliable status signal
 """
 
 import json
@@ -19,8 +18,9 @@ from .utils import extract_og_image
 
 log = logging.getLogger(__name__)
 
-BASE_URL   = "https://forbiddenplanet.com"
-SEARCH_URL = f"{BASE_URL}/search/?q={{query}}"
+BASE_URL     = "https://forbiddenplanet.com"
+SEARCH_URL   = f"{BASE_URL}/search/?q={{query}}"
+CATEGORY_URL = f"{BASE_URL}/catalogue/games/trading-card-games/pokemon/"
 
 HEADERS = {
     "User-Agent": (
@@ -40,7 +40,7 @@ SESSION.headers.update(HEADERS)
 def _parse_schema_status(soup: BeautifulSoup) -> str | None:
     for tag in soup.find_all("script", type="application/ld+json"):
         try:
-            data = json.loads(tag.string or "")
+            data  = json.loads(tag.string or "")
             items = data if isinstance(data, list) else [data]
             for item in items:
                 avail = (item.get("offers") or {}).get("availability", "")
@@ -66,12 +66,12 @@ def get_status_from_page(url: str) -> tuple[str, str | None]:
     try:
         resp = SESSION.get(url, timeout=15)
         resp.raise_for_status()
-        soup = BeautifulSoup(resp.text, "lxml")
+        soup      = BeautifulSoup(resp.text, "lxml")
         image_url = extract_og_image(soup)
 
-        schema_status = _parse_schema_status(soup)
-        if schema_status:
-            return schema_status, image_url
+        schema = _parse_schema_status(soup)
+        if schema:
+            return schema, image_url
 
         for el in soup.find_all(["button", "input", "a"]):
             text = (el.get("value") or el.get_text(strip=True) or "").lower()
@@ -97,52 +97,120 @@ def get_status_from_page(url: str) -> tuple[str, str | None]:
         return "unknown", None
 
 
-def search_fp(query: str) -> str | None:
-    """Search Forbidden Planet and return URL of best matching product."""
-    try:
-        url = SEARCH_URL.format(query=requests.utils.quote(query))
-        resp = SESSION.get(url, timeout=15)
-        resp.raise_for_status()
-        soup = BeautifulSoup(resp.text, "lxml")
+def _parse_listing_page(soup: BeautifulSoup) -> list[dict]:
+    """Extract product candidates from a Forbidden Planet listing page."""
+    products = []
+    seen: set[str] = set()
 
-        for a in soup.find_all("a", href=True):
-            href = a["href"]
-            if ("/catalogue/" in href or "/games/" in href) and "search" not in href:
-                return href if href.startswith("http") else f"{BASE_URL}{href}"
+    for a in soup.find_all("a", href=True):
+        href = a["href"]
+        if "/catalogue/" not in href and "/games/" not in href:
+            continue
+        if "search" in href or "category" in href or href.count("/") < 3:
+            continue
+        url = href if href.startswith("http") else f"{BASE_URL}{href}"
+        if url in seen:
+            continue
+        seen.add(url)
 
-        return None
+        name = a.get_text(" ", strip=True)
+        if not name or len(name) < 5:
+            parent = a.parent
+            for _ in range(4):
+                if parent is None:
+                    break
+                heading = parent.find(["h2", "h3", "span"],
+                                      class_=lambda c: c and any(
+                                          k in c.lower() for k in ("name", "title", "product")))
+                if heading and heading.get_text(strip=True):
+                    name = heading.get_text(" ", strip=True)
+                    break
+                parent = parent.parent
 
-    except requests.RequestException as e:
-        log.warning(f"Forbidden Planet search failed for '{query}': {e}")
-        return None
+        if not name or len(name) < 5:
+            continue
+
+        price = None
+        parent = a.parent
+        for _ in range(5):
+            if parent is None:
+                break
+            price_el = parent.find(class_=lambda c: c and "price" in c.lower())
+            if price_el:
+                price = price_el.get_text(strip=True)
+                break
+            parent = parent.parent
+
+        image_url = None
+        parent = a.parent
+        for _ in range(4):
+            if parent is None:
+                break
+            img = parent.find("img")
+            if img:
+                image_url = img.get("src") or img.get("data-src")
+                break
+            parent = parent.parent
+
+        products.append({"name": name, "url": url, "price": price, "status": "unknown", "image_url": image_url})
+
+    return products
 
 
-def scrape_forbidden_planet(products: list[dict]) -> dict[int, dict]:
+def browse_category() -> list[dict]:
     """
-    Main entry point.
-    products: list of product dicts (id, release_id, type, name, sort_order)
-    Returns: { product_id: { "status": str, "url": str } }
+    Browse Forbidden Planet's Pokémon TCG section and return all product candidates.
+    Tries the dedicated category URL first, falls back to search.
     """
-    results = {}
+    all_products: list[dict] = []
+    seen_urls: set[str] = set()
 
-    for product in products:
-        pid  = product["id"]
-        name = product["name"]
+    # Try the dedicated category page with pagination
+    page = 1
+    while page <= 10:
+        url = f"{CATEGORY_URL}?page={page}" if page > 1 else CATEGORY_URL
+        try:
+            resp = SESSION.get(url, timeout=20)
+            if resp.status_code == 404:
+                break
+            resp.raise_for_status()
+        except requests.RequestException as e:
+            log.warning(f"Forbidden Planet category fetch failed (page {page}): {e}")
+            break
 
-        log.info(f"  Forbidden Planet: searching for '{name}'")
-        url = search_fp(name)
+        soup  = BeautifulSoup(resp.text, "lxml")
+        found = _parse_listing_page(soup)
+        new   = [p for p in found if p["url"] not in seen_urls]
+        if not new:
+            break
 
-        if not url:
-            log.info(f"  Forbidden Planet: no result found for '{name}'")
-            results[pid] = {
-                "status": "unknown",
-                "url": SEARCH_URL.format(query=requests.utils.quote(name)),
-            }
-        else:
-            status, image_url = get_status_from_page(url)
-            log.info(f"  Forbidden Planet: '{name}' → {status} ({url})")
-            results[pid] = {"status": status, "url": url, "image_url": image_url}
+        for p in new:
+            seen_urls.add(p["url"])
+        all_products.extend(new)
 
-        time.sleep(2)
+        next_btn = soup.find("a", class_=lambda c: c and "next" in c.lower())
+        if not next_btn and page > 1:
+            break
 
-    return results
+        page += 1
+        time.sleep(1.5)
+
+    # Fallback: search queries if category page yielded nothing
+    if not all_products:
+        for query in ["pokemon tcg elite trainer box", "pokemon tcg booster box", "pokemon tcg tin"]:
+            url = SEARCH_URL.format(query=requests.utils.quote(query))
+            try:
+                resp = SESSION.get(url, timeout=15)
+                resp.raise_for_status()
+                soup  = BeautifulSoup(resp.text, "lxml")
+                found = _parse_listing_page(soup)
+                new   = [p for p in found if p["url"] not in seen_urls]
+                for p in new:
+                    seen_urls.add(p["url"])
+                all_products.extend(new)
+                time.sleep(2)
+            except requests.RequestException as e:
+                log.warning(f"Forbidden Planet search failed for '{query}': {e}")
+
+    log.info(f"Forbidden Planet: found {len(all_products)} products on category pages")
+    return all_products

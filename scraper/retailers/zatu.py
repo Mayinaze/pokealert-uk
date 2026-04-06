@@ -1,12 +1,11 @@
 """
 Zatu Games Scraper
 ==================
-Zatu is one of the more scraper-friendly UK retailers.
-They have clean product pages with visible stock status.
+board-game.co.uk — scraper-friendly UK games retailer.
 
-Strategy:
-- Search Zatu by product name (e.g. "Prismatic Evolutions Elite Trainer Box")
-- Check the product page for "Add to Basket" / "Pre-order" / "Out of Stock"
+Category page approach:
+- Search for "pokemon tcg" on Zatu and paginate through results
+- Product pages have clean stock status via button text
 """
 
 import time
@@ -18,8 +17,9 @@ from .utils import extract_og_image
 
 log = logging.getLogger(__name__)
 
-BASE_URL   = "https://www.board-game.co.uk"
-SEARCH_URL = f"{BASE_URL}/search/?q={{query}}"
+BASE_URL     = "https://www.board-game.co.uk"
+SEARCH_URL   = f"{BASE_URL}/search/?q={{query}}"
+CATEGORY_URL = f"{BASE_URL}/search/?q=pokemon+tcg&orderby=created"
 
 HEADERS = {
     "User-Agent": (
@@ -30,6 +30,9 @@ HEADERS = {
     "Accept-Language": "en-GB,en;q=0.9",
 }
 
+SESSION = requests.Session()
+SESSION.headers.update(HEADERS)
+
 
 def get_status_from_page(url: str) -> tuple[str, str | None]:
     """
@@ -37,9 +40,9 @@ def get_status_from_page(url: str) -> tuple[str, str | None]:
     Returns: ('available' | 'preorder' | 'soldout' | 'unknown', image_url | None)
     """
     try:
-        resp = requests.get(url, headers=HEADERS, timeout=10)
+        resp = SESSION.get(url, headers=HEADERS, timeout=10)
         resp.raise_for_status()
-        soup = BeautifulSoup(resp.text, "html.parser")
+        soup      = BeautifulSoup(resp.text, "html.parser")
         image_url = extract_og_image(soup)
 
         btn = soup.find("button", class_=lambda c: c and "add-to-basket" in c.lower())
@@ -70,52 +73,81 @@ def get_status_from_page(url: str) -> tuple[str, str | None]:
         return "unknown", None
 
 
-def search_zatu(query: str) -> str | None:
-    """Search Zatu and return the URL of the best matching product."""
-    try:
+def _parse_search_page(soup: BeautifulSoup) -> list[dict]:
+    """Extract product candidates from a Zatu search results page."""
+    products = []
+    seen: set[str] = set()
+
+    for a in soup.find_all("a", href=True):
+        href = a["href"]
+        # Zatu product URLs: /product-name/ style slugs
+        if not href or "/search" in href or "/category" in href or "/page" in href:
+            continue
+        # Must be a meaningful path (not a nav link)
+        parts = [p for p in href.strip("/").split("/") if p]
+        if len(parts) != 1:
+            continue
+        url = href if href.startswith("http") else f"{BASE_URL}{href}"
+        if url in seen:
+            continue
+        seen.add(url)
+
+        name = a.get_text(" ", strip=True)
+        if not name or len(name) < 5:
+            continue
+
+        # Price nearby
+        price = None
+        parent = a.parent
+        for _ in range(5):
+            if parent is None:
+                break
+            price_el = parent.find(class_=lambda c: c and "price" in c.lower())
+            if price_el:
+                price = price_el.get_text(strip=True)
+                break
+            parent = parent.parent
+
+        # Image nearby
+        image_url = None
+        parent = a.parent
+        for _ in range(4):
+            if parent is None:
+                break
+            img = parent.find("img")
+            if img:
+                image_url = img.get("src") or img.get("data-src")
+                break
+            parent = parent.parent
+
+        products.append({"name": name, "url": url, "price": price, "status": "unknown", "image_url": image_url})
+
+    return products
+
+
+def browse_category() -> list[dict]:
+    """
+    Browse Zatu's Pokémon TCG search results and return all product candidates.
+    """
+    all_products: list[dict] = []
+    seen_urls: set[str] = set()
+
+    for query in ["pokemon elite trainer box", "pokemon booster box tcg", "pokemon tin tcg"]:
         url = SEARCH_URL.format(query=requests.utils.quote(query))
-        resp = requests.get(url, headers=HEADERS, timeout=10)
-        resp.raise_for_status()
-        soup = BeautifulSoup(resp.text, "html.parser")
+        try:
+            resp = SESSION.get(url, timeout=15)
+            resp.raise_for_status()
+        except requests.RequestException as e:
+            log.warning(f"Zatu search failed for '{query}': {e}")
+            continue
 
-        result = soup.find("a", class_=lambda c: c and "product" in c.lower())
-        if result and result.get("href"):
-            href = result["href"]
-            return href if href.startswith("http") else f"{BASE_URL}{href}"
-
-        return None
-
-    except requests.RequestException as e:
-        log.warning(f"Zatu search failed for '{query}': {e}")
-        return None
-
-
-def scrape_zatu(products: list[dict]) -> dict[int, dict]:
-    """
-    Main entry point.
-    products: list of product dicts (id, release_id, type, name, sort_order)
-    Returns: { product_id: { "status": str, "url": str } }
-    """
-    results = {}
-
-    for product in products:
-        pid  = product["id"]
-        name = product["name"]
-
-        log.info(f"  Zatu: searching for '{name}'")
-        url = search_zatu(name)
-
-        if not url:
-            log.info(f"  Zatu: no result found for '{name}'")
-            results[pid] = {
-                "status": "unknown",
-                "url": SEARCH_URL.format(query=requests.utils.quote(name)),
-            }
-        else:
-            status, image_url = get_status_from_page(url)
-            log.info(f"  Zatu: '{name}' → {status} ({url})")
-            results[pid] = {"status": status, "url": url, "image_url": image_url}
-
+        soup  = BeautifulSoup(resp.text, "html.parser")
+        found = _parse_search_page(soup)
+        new   = [p for p in found if p["url"] not in seen_urls]
+        for p in new:
+            seen_urls.add(p["url"])
+        all_products.extend(new)
         time.sleep(2)
 
-    return results
+    log.info(f"Zatu: found {len(all_products)} products across category searches")
+    return all_products

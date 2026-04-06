@@ -1,12 +1,16 @@
 """
 Magic Madhouse Scraper
 =======================
-magicmadhouse.co.uk — UK specialist TCG retailer, extensive Pokémon range.
-One of the best UK sources for sealed product. Clean Shopify HTML.
+magicmadhouse.co.uk — UK specialist TCG retailer. Shopify-based.
 
-Strategy:
-- Search by product name (e.g. "Prismatic Evolutions Elite Trainer Box")
-- Schema.org JSON-LD is reliable; Shopify variant data as secondary check
+Category page approach:
+- Browse the Pokémon TCG collection pages
+- Shopify collections are well-structured and scraper-friendly
+
+Status detection:
+- Schema.org JSON-LD (primary)
+- Shopify variant data (secondary)
+- Button / page text (fallback)
 """
 
 import json
@@ -20,8 +24,13 @@ from .utils import extract_og_image
 
 log = logging.getLogger(__name__)
 
-BASE_URL   = "https://www.magicmadhouse.co.uk"
-SEARCH_URL = f"{BASE_URL}/search?q={{query}}"
+BASE_URL     = "https://www.magicmadhouse.co.uk"
+SEARCH_URL   = f"{BASE_URL}/search?q={{query}}"
+CATEGORY_URLS = [
+    f"{BASE_URL}/collections/pokemon-tcg",
+    f"{BASE_URL}/collections/pokemon",
+    f"{BASE_URL}/pokemon-tcg",
+]
 
 HEADERS = {
     "User-Agent": (
@@ -41,7 +50,7 @@ SESSION.headers.update(HEADERS)
 def _parse_schema_status(soup: BeautifulSoup) -> str | None:
     for tag in soup.find_all("script", type="application/ld+json"):
         try:
-            data = json.loads(tag.string or "")
+            data  = json.loads(tag.string or "")
             items = data if isinstance(data, list) else [data]
             for item in items:
                 avail = (item.get("offers") or {}).get("availability", "")
@@ -77,16 +86,16 @@ def get_status_from_page(url: str) -> tuple[str, str | None]:
     try:
         resp = SESSION.get(url, timeout=15)
         resp.raise_for_status()
-        soup = BeautifulSoup(resp.text, "lxml")
+        soup      = BeautifulSoup(resp.text, "lxml")
         image_url = extract_og_image(soup)
 
-        schema_status = _parse_schema_status(soup)
-        if schema_status:
-            return schema_status, image_url
+        schema = _parse_schema_status(soup)
+        if schema:
+            return schema, image_url
 
-        shopify_status = _parse_shopify_available(soup)
-        if shopify_status:
-            return shopify_status, image_url
+        shopify = _parse_shopify_available(soup)
+        if shopify:
+            return shopify, image_url
 
         for el in soup.find_all(["button", "input", "a"]):
             text = (el.get("value") or el.get_text(strip=True) or "").lower()
@@ -112,52 +121,134 @@ def get_status_from_page(url: str) -> tuple[str, str | None]:
         return "unknown", None
 
 
-def search_magic_madhouse(query: str) -> str | None:
-    """Search Magic Madhouse and return URL of best matching product."""
-    try:
-        url = SEARCH_URL.format(query=requests.utils.quote(query))
-        resp = SESSION.get(url, timeout=15)
-        resp.raise_for_status()
-        soup = BeautifulSoup(resp.text, "lxml")
+def _parse_collection_page(soup: BeautifulSoup) -> list[dict]:
+    """Extract product candidates from a Shopify collection page."""
+    products = []
+    seen: set[str] = set()
 
-        for a in soup.find_all("a", href=True):
-            href = a["href"]
-            if "/products/" in href and "search" not in href:
-                return href if href.startswith("http") else f"{BASE_URL}{href}"
+    for a in soup.find_all("a", href=True):
+        href = a["href"]
+        if "/products/" not in href or "search" in href:
+            continue
+        url = href if href.startswith("http") else f"{BASE_URL}{href}"
+        # Strip query strings from product URLs
+        url = url.split("?")[0]
+        if url in seen:
+            continue
+        seen.add(url)
 
-        return None
+        name = a.get_text(" ", strip=True)
+        if not name or len(name) < 5:
+            parent = a.parent
+            for _ in range(4):
+                if parent is None:
+                    break
+                heading = parent.find(["h2", "h3", "span"],
+                                      class_=lambda c: c and any(
+                                          k in c.lower() for k in ("title", "name", "product")))
+                if heading and heading.get_text(strip=True):
+                    name = heading.get_text(" ", strip=True)
+                    break
+                parent = parent.parent
 
-    except requests.RequestException as e:
-        log.warning(f"Magic Madhouse search failed for '{query}': {e}")
-        return None
+        if not name or len(name) < 5:
+            continue
+
+        price = None
+        parent = a.parent
+        for _ in range(5):
+            if parent is None:
+                break
+            price_el = parent.find(class_=lambda c: c and "price" in c.lower())
+            if price_el:
+                price = price_el.get_text(strip=True)
+                break
+            parent = parent.parent
+
+        image_url = None
+        parent = a.parent
+        for _ in range(4):
+            if parent is None:
+                break
+            img = parent.find("img")
+            if img:
+                image_url = img.get("src") or img.get("data-src")
+                if image_url and image_url.startswith("//"):
+                    image_url = "https:" + image_url
+                break
+            parent = parent.parent
+
+        products.append({"name": name, "url": url, "price": price, "status": "unknown", "image_url": image_url})
+
+    return products
 
 
-def scrape_magic_madhouse(products: list[dict]) -> dict[int, dict]:
+def browse_category() -> list[dict]:
     """
-    Main entry point.
-    products: list of product dicts (id, release_id, type, name, sort_order)
-    Returns: { product_id: { "status": str, "url": str } }
+    Browse Magic Madhouse Pokémon TCG collection and return all product candidates.
     """
-    results = {}
+    all_products: list[dict] = []
+    seen_urls: set[str] = set()
+    base_url_used: str | None = None
 
-    for product in products:
-        pid  = product["id"]
-        name = product["name"]
+    # Try known collection URLs to find a working one
+    for cat_url in CATEGORY_URLS:
+        try:
+            resp = SESSION.get(cat_url, timeout=15)
+            if resp.status_code == 200:
+                base_url_used = cat_url
+                soup  = BeautifulSoup(resp.text, "lxml")
+                found = _parse_collection_page(soup)
+                new   = [p for p in found if p["url"] not in seen_urls]
+                for p in new:
+                    seen_urls.add(p["url"])
+                all_products.extend(new)
+                break
+        except requests.RequestException:
+            continue
 
-        log.info(f"  Magic Madhouse: searching for '{name}'")
-        url = search_magic_madhouse(name)
+    if base_url_used:
+        # Paginate
+        page = 2
+        while page <= 15:
+            url = f"{base_url_used}?page={page}"
+            try:
+                resp = SESSION.get(url, timeout=15)
+                if resp.status_code == 404:
+                    break
+                resp.raise_for_status()
+            except requests.RequestException as e:
+                log.warning(f"Magic Madhouse pagination failed (page {page}): {e}")
+                break
 
-        if not url:
-            log.info(f"  Magic Madhouse: no result found for '{name}'")
-            results[pid] = {
-                "status": "unknown",
-                "url": SEARCH_URL.format(query=requests.utils.quote(name)),
-            }
-        else:
-            status, image_url = get_status_from_page(url)
-            log.info(f"  Magic Madhouse: '{name}' → {status} ({url})")
-            results[pid] = {"status": status, "url": url, "image_url": image_url}
+            soup  = BeautifulSoup(resp.text, "lxml")
+            found = _parse_collection_page(soup)
+            new   = [p for p in found if p["url"] not in seen_urls]
+            if not new:
+                break
 
-        time.sleep(2)
+            for p in new:
+                seen_urls.add(p["url"])
+            all_products.extend(new)
+            page += 1
+            time.sleep(1.5)
 
-    return results
+    # Fallback to search if collection approach yielded nothing
+    if not all_products:
+        for query in ["pokemon elite trainer box", "pokemon booster box", "pokemon tin"]:
+            url = SEARCH_URL.format(query=requests.utils.quote(query))
+            try:
+                resp = SESSION.get(url, timeout=15)
+                resp.raise_for_status()
+                soup  = BeautifulSoup(resp.text, "lxml")
+                found = _parse_collection_page(soup)
+                new   = [p for p in found if p["url"] not in seen_urls]
+                for p in new:
+                    seen_urls.add(p["url"])
+                all_products.extend(new)
+                time.sleep(2)
+            except requests.RequestException as e:
+                log.warning(f"Magic Madhouse search failed for '{query}': {e}")
+
+    log.info(f"Magic Madhouse: found {len(all_products)} products on category pages")
+    return all_products

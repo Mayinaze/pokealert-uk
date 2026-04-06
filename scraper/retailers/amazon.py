@@ -1,23 +1,16 @@
 """
 Amazon UK Scraper
 ==================
-amazon.co.uk — included for visibility on official Pokémon TCG listings.
+amazon.co.uk — widest catalogue, no date restriction.
 
-⚠️  IMPORTANT CAVEATS:
-  1. Amazon aggressively detects and blocks automated requests.
-     This scraper will frequently return 'unknown' — this is expected.
-  2. Only official Pokémon Company / Nintendo listings are targeted.
-     Marketplace seller listings are intentionally excluded.
-  3. Prices from Amazon may be unreliable for pre-order comparison due to
-     third-party sellers undercutting / surging. The price field is left
-     null; only status is tracked.
-  4. If you receive consistent 429 / CAPTCHA responses, disable Amazon
-     in SCRAPERS in scraper.py until a proper session solution is in place.
+Category page approach:
+- Search "Pokémon TCG" sorted by newest arrivals to catch all products
+- Filter to 'Sold by Amazon' to exclude marketplace sellers
+- CAPTCHA detection; gracefully returns 'unknown' when blocked
 
-Strategy:
-- Search by product name (e.g. "Prismatic Evolutions Elite Trainer Box")
-- Filter search to 'Sold by Amazon' to exclude marketplace sellers
-- Detect "In Stock", "Pre-order", "Currently unavailable" in page text
+⚠️  Amazon aggressively detects and blocks automated requests.
+    High rate of 'unknown' results is expected. If consistent 429/CAPTCHA
+    responses occur, comment out Amazon in the RETAILERS list in scraper.py.
 """
 
 import time
@@ -29,9 +22,10 @@ from .utils import extract_og_image
 
 log = logging.getLogger(__name__)
 
-BASE_URL   = "https://www.amazon.co.uk"
+BASE_URL     = "https://www.amazon.co.uk"
 # rh filter: p_6:A3P5ROKL5A1OLE = "Sold by Amazon"
-SEARCH_URL = f"{BASE_URL}/s?k={{query}}&rh=p_6%3AA3P5ROKL5A1OLE"
+SEARCH_URL   = f"{BASE_URL}/s?k={{query}}&rh=p_6%3AA3P5ROKL5A1OLE"
+CATEGORY_URL = f"{BASE_URL}/s?k=pokemon+trading+card+game&s=date-desc-rank&rh=p_6%3AA3P5ROKL5A1OLE"
 
 HEADERS = {
     "User-Agent": (
@@ -75,7 +69,7 @@ def get_status_from_page(url: str) -> tuple[str, str | None]:
             log.warning(f"Amazon: CAPTCHA detected at {url} — returning unknown")
             return "unknown", None
 
-        soup = BeautifulSoup(resp.text, "lxml")
+        soup      = BeautifulSoup(resp.text, "lxml")
         image_url = extract_og_image(soup)
         page_text = soup.get_text(" ", strip=True).lower()
 
@@ -92,12 +86,12 @@ def get_status_from_page(url: str) -> tuple[str, str | None]:
 
         buy_box = soup.find(id="buybox") or soup.find(id="availability")
         if buy_box:
-            bb_text = buy_box.get_text(" ", strip=True).lower()
-            if "pre-order" in bb_text:
+            bb = buy_box.get_text(" ", strip=True).lower()
+            if "pre-order" in bb:
                 return "preorder", image_url
-            if "in stock" in bb_text:
+            if "in stock" in bb:
                 return "available", image_url
-            if "unavailable" in bb_text or "out of stock" in bb_text:
+            if "unavailable" in bb or "out of stock" in bb:
                 return "soldout", image_url
 
         return "unknown", image_url
@@ -107,70 +101,88 @@ def get_status_from_page(url: str) -> tuple[str, str | None]:
         return "unknown", None
 
 
-def search_amazon(query: str) -> str | None:
+def _parse_search_page(soup: BeautifulSoup) -> list[dict]:
+    """Extract product candidates from an Amazon search results page."""
+    products = []
+    seen: set[str] = set()
+
+    for container in soup.find_all(attrs={"data-asin": True}):
+        asin = container.get("data-asin", "")
+        if not asin:
+            continue
+
+        link = container.find("a", href=lambda h: h and "/dp/" in (h or ""))
+        if not link or not link.get("href"):
+            continue
+        href = link["href"]
+        if "/dp/" not in href:
+            continue
+
+        asin_path = "/dp/" + href.split("/dp/")[1].split("?")[0].split("/")[0]
+        url = f"{BASE_URL}{asin_path}"
+        if url in seen:
+            continue
+        seen.add(url)
+
+        # Product name
+        name_el = (
+            container.find("span", class_=lambda c: c and "product-title" in (c or ""))
+            or container.find("h2")
+            or container.find("span", class_="a-text-normal")
+        )
+        name = name_el.get_text(" ", strip=True) if name_el else ""
+        if not name or len(name) < 5:
+            continue
+
+        # Price
+        price = None
+        price_el = container.find(class_=lambda c: c and "price" in (c or "").lower())
+        if price_el:
+            price = price_el.get_text(strip=True)
+
+        # Image
+        image_url = None
+        img = container.find("img")
+        if img:
+            image_url = img.get("src") or img.get("data-src")
+
+        products.append({"name": name, "url": url, "price": price, "status": "unknown", "image_url": image_url})
+
+    return products
+
+
+def browse_category() -> list[dict]:
     """
-    Search Amazon for an official Pokémon TCG listing.
-    Filters to 'Sold by Amazon' to avoid third-party marketplace results.
+    Browse Amazon UK Pokémon TCG listings (sorted newest first) and return product candidates.
+    Tries up to 3 pages.
     """
-    try:
-        url = SEARCH_URL.format(query=requests.utils.quote(query))
-        resp = SESSION.get(url, timeout=15)
-        resp.raise_for_status()
+    all_products: list[dict] = []
+    seen_urls: set[str] = set()
+
+    for page in range(1, 4):
+        url = f"{CATEGORY_URL}&page={page}"
+        try:
+            resp = SESSION.get(url, timeout=20)
+            resp.raise_for_status()
+        except requests.RequestException as e:
+            log.warning(f"Amazon category fetch failed (page {page}): {e}")
+            break
 
         if _is_captcha_page(resp.text):
-            log.warning("Amazon: CAPTCHA on search page — skipping")
-            return None
+            log.warning(f"Amazon: CAPTCHA on category page {page} — stopping")
+            break
 
-        soup = BeautifulSoup(resp.text, "lxml")
+        soup  = BeautifulSoup(resp.text, "lxml")
+        found = _parse_search_page(soup)
+        new   = [p for p in found if p["url"] not in seen_urls]
+        if not new:
+            break
 
-        for container in soup.find_all(attrs={"data-asin": True}):
-            asin = container.get("data-asin", "")
-            if not asin:
-                continue
-            link = container.find("a", href=lambda h: h and "/dp/" in (h or ""))
-            if link and link.get("href"):
-                href = link["href"]
-                if "/dp/" in href:
-                    asin_path = "/dp/" + href.split("/dp/")[1].split("?")[0].split("/")[0]
-                    return f"{BASE_URL}{asin_path}"
+        for p in new:
+            seen_urls.add(p["url"])
+        all_products.extend(new)
 
-        return None
+        time.sleep(4)  # Longer delay to reduce bot-detection probability
 
-    except requests.RequestException as e:
-        log.warning(f"Amazon search failed for '{query}': {e}")
-        return None
-
-
-def scrape_amazon(products: list[dict]) -> dict[int, dict]:
-    """
-    Main entry point.
-    products: list of product dicts (id, release_id, type, name, sort_order)
-    Returns: { product_id: { "status": str, "url": str } }
-
-    ⚠️  Amazon frequently blocks automated requests. Expect a high rate of
-    'unknown' results.
-    """
-    results = {}
-
-    for product in products:
-        pid  = product["id"]
-        name = product["name"]
-
-        log.info(f"  Amazon: searching for '{name}'")
-        url = search_amazon(name)
-
-        if not url:
-            log.info(f"  Amazon: no result found for '{name}'")
-            results[pid] = {
-                "status": "unknown",
-                "url": SEARCH_URL.format(query=requests.utils.quote(name)),
-            }
-        else:
-            status, image_url = get_status_from_page(url)
-            log.info(f"  Amazon: '{name}' → {status} ({url})")
-            results[pid] = {"status": status, "url": url, "image_url": image_url}
-
-        # Longer delay to reduce bot-detection probability
-        time.sleep(4)
-
-    return results
+    log.info(f"Amazon: found {len(all_products)} products on category pages")
+    return all_products

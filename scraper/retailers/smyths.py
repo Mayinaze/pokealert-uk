@@ -3,12 +3,14 @@ Smyths Toys Scraper
 ====================
 smythstoys.com — major UK toy retailer, strong Pokémon TCG range.
 
-Strategy:
-- Search by full product name (e.g. "Prismatic Evolutions Elite Trainer Box")
-- Fallback: search by set name only (strips product-type suffix) if full search fails
-  Smyths often lists products with sub-set names (e.g. "Chaos Rising") that differ
-  from our DB, so a bare set-name search has a better hit rate.
-- Parse product page for availability via schema.org JSON-LD or page text.
+Category page approach:
+- Browse /brand/pokemon/pokemon-trading-card-game/ to collect all listed products
+- Paginate through results pages until exhausted
+- For each matched product, fetch the product page for accurate stock status
+
+Status detection:
+- Schema.org JSON-LD (primary)
+- Button / page text (fallback)
 """
 
 import json
@@ -21,8 +23,8 @@ from .utils import extract_og_image
 
 log = logging.getLogger(__name__)
 
-BASE_URL   = "https://www.smythstoys.com"
-SEARCH_URL = f"{BASE_URL}/uk/en-gb/search/?text={{query}}"
+BASE_URL     = "https://www.smythstoys.com"
+CATEGORY_URL = f"{BASE_URL}/uk/en-gb/brand/pokemon/pokemon-trading-card-game/"
 
 HEADERS = {
     "User-Agent": (
@@ -32,34 +34,17 @@ HEADERS = {
     ),
     "Accept-Language": "en-GB,en;q=0.9",
     "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-    "Referer": "https://www.smythstoys.com/uk/en-gb/",
+    "Referer": f"{BASE_URL}/uk/en-gb/",
 }
-
-# Suffixes stripped when falling back to set-name-only search
-_PRODUCT_SUFFIXES = (
-    " Elite Trainer Box",
-    " Booster Box",
-    " Booster Pack",
-    " Collection Box",
-    " Tin",
-)
 
 SESSION = requests.Session()
 SESSION.headers.update(HEADERS)
 
 
-def _extract_set_name(product_name: str) -> str:
-    """Strip known product-type suffixes to get the bare set name."""
-    for suffix in _PRODUCT_SUFFIXES:
-        if product_name.lower().endswith(suffix.lower()):
-            return product_name[: -len(suffix)].strip()
-    return product_name
-
-
 def _parse_schema_status(soup: BeautifulSoup) -> str | None:
     for tag in soup.find_all("script", type="application/ld+json"):
         try:
-            data = json.loads(tag.string or "")
+            data  = json.loads(tag.string or "")
             items = data if isinstance(data, list) else [data]
             for item in items:
                 avail = (item.get("offers") or {}).get("availability", "")
@@ -85,15 +70,14 @@ def get_status_from_page(url: str) -> tuple[str, str | None]:
     try:
         resp = SESSION.get(url, timeout=15)
         resp.raise_for_status()
-        soup = BeautifulSoup(resp.text, "lxml")
+        soup      = BeautifulSoup(resp.text, "lxml")
         image_url = extract_og_image(soup)
 
-        schema_status = _parse_schema_status(soup)
-        if schema_status:
-            return schema_status, image_url
+        schema = _parse_schema_status(soup)
+        if schema:
+            return schema, image_url
 
         page_text = soup.get_text(" ", strip=True).lower()
-
         if "pre-order" in page_text or "preorder" in page_text:
             return "preorder", image_url
         if "out of stock" in page_text or "sold out" in page_text or "unavailable" in page_text:
@@ -108,71 +92,114 @@ def get_status_from_page(url: str) -> tuple[str, str | None]:
         return "unknown", None
 
 
-def _find_product_link(soup: BeautifulSoup) -> str | None:
-    """Return the first product URL (/p/...) found in a search result page."""
+def _parse_category_page(soup: BeautifulSoup) -> list[dict]:
+    """Extract product candidates from a Smyths category/listing page."""
+    products = []
+    seen_urls: set[str] = set()
+
+    # Smyths renders products as <li> or <article> tiles with a link to /p/NNNNNN
     for a in soup.find_all("a", href=True):
         href = a["href"]
-        if "/p/" in href and "pokemon" in href.lower():
-            return href if href.startswith("http") else f"{BASE_URL}{href}"
-    for a in soup.find_all("a", href=True):
-        href = a["href"]
-        if "/p/" in href:
-            return href if href.startswith("http") else f"{BASE_URL}{href}"
-    return None
+        if "/p/" not in href:
+            continue
+        url = href if href.startswith("http") else f"{BASE_URL}{href}"
+        if url in seen_urls:
+            continue
+        seen_urls.add(url)
+
+        # Try to get the product name from the link text or a nearby element
+        name = a.get_text(" ", strip=True)
+        if not name or len(name) < 5:
+            # Walk up to parent to find a title element
+            parent = a.parent
+            for _ in range(4):
+                if parent is None:
+                    break
+                candidate = parent.find(["h2", "h3", "p", "span"],
+                                        class_=lambda c: c and any(
+                                            k in c.lower() for k in ("name", "title", "product")))
+                if candidate and candidate.get_text(strip=True):
+                    name = candidate.get_text(" ", strip=True)
+                    break
+                parent = parent.parent
+
+        if not name or len(name) < 5:
+            continue
+
+        # Price — look near the link
+        price = None
+        parent = a.parent
+        for _ in range(5):
+            if parent is None:
+                break
+            price_el = parent.find(class_=lambda c: c and "price" in c.lower())
+            if price_el:
+                price = price_el.get_text(strip=True)
+                break
+            parent = parent.parent
+
+        # Image — look for <img> near the link
+        image_url = None
+        parent = a.parent
+        for _ in range(5):
+            if parent is None:
+                break
+            img = parent.find("img")
+            if img:
+                image_url = img.get("src") or img.get("data-src") or img.get("data-lazy-src")
+                break
+            parent = parent.parent
+
+        products.append({
+            "name":      name,
+            "url":       url,
+            "price":     price,
+            "status":    "unknown",
+            "image_url": image_url,
+        })
+
+    return products
 
 
-def search_smyths(query: str) -> str | None:
+def browse_category() -> list[dict]:
     """
-    Search Smyths and return URL of best matching product.
-    Falls back to set-name-only search if the full product name returns nothing.
+    Browse the Smyths Pokémon TCG category and return all product candidates.
+    Handles pagination automatically.
     """
-    queries_to_try = [query]
-    set_name = _extract_set_name(query)
-    if set_name != query:
-        queries_to_try.append(set_name)
+    all_products: list[dict] = []
+    seen_urls: set[str] = set()
+    page = 0
 
-    for q in queries_to_try:
+    while True:
+        url = f"{CATEGORY_URL}?currentPage={page}&pageSize=96"
         try:
-            url = SEARCH_URL.format(query=requests.utils.quote(q))
-            resp = SESSION.get(url, timeout=15)
+            resp = SESSION.get(url, timeout=20)
             resp.raise_for_status()
-            soup = BeautifulSoup(resp.text, "lxml")
-            link = _find_product_link(soup)
-            if link:
-                log.debug(f"  Smyths: found link via query '{q}'")
-                return link
         except requests.RequestException as e:
-            log.warning(f"Smyths search failed for '{q}': {e}")
+            log.warning(f"Smyths category fetch failed (page {page}): {e}")
+            break
 
-    return None
+        soup  = BeautifulSoup(resp.text, "lxml")
+        found = _parse_category_page(soup)
 
+        # Deduplicate across pages
+        new = [p for p in found if p["url"] not in seen_urls]
+        if not new:
+            break  # No new products — end of pagination
 
-def scrape_smyths(products: list[dict]) -> dict[int, dict]:
-    """
-    Main entry point.
-    products: list of product dicts (id, release_id, type, name, sort_order)
-    Returns: { product_id: { "status": str, "url": str } }
-    """
-    results = {}
+        for p in new:
+            seen_urls.add(p["url"])
+        all_products.extend(new)
 
-    for product in products:
-        pid  = product["id"]
-        name = product["name"]
+        # Check whether there is a "next page" link
+        next_link = soup.find("a", class_=lambda c: c and "next" in c.lower())
+        if not next_link and page > 0:
+            break
 
-        log.info(f"  Smyths: searching for '{name}'")
-        url = search_smyths(name)
+        page += 1
+        if page > 10:  # Safety cap
+            break
+        time.sleep(1.5)
 
-        if not url:
-            log.info(f"  Smyths: no result found for '{name}'")
-            results[pid] = {
-                "status": "unknown",
-                "url": SEARCH_URL.format(query=requests.utils.quote(name)),
-            }
-        else:
-            status, image_url = get_status_from_page(url)
-            log.info(f"  Smyths: '{name}' → {status} ({url})")
-            results[pid] = {"status": status, "url": url, "image_url": image_url}
-
-        time.sleep(3)
-
-    return results
+    log.info(f"Smyths: found {len(all_products)} products on category pages")
+    return all_products

@@ -21,7 +21,7 @@ Usage:
 import logging
 import re
 import time
-from datetime import datetime, timezone
+from datetime import datetime
 
 import requests
 from bs4 import BeautifulSoup
@@ -237,6 +237,8 @@ def _insert_baseline_products(db: Client, release_id: int, set_name: str) -> Non
 def discover_and_insert(db: Client) -> int:
     """
     Main entry point.  Fetches Bulbapedia, finds new sets, inserts them.
+    Covers all sets — no year filter applied. The retailer date windows in
+    match.py control which sets are actively scraped per retailer.
     Returns the number of sets inserted.
     """
     log.info("=== Set discovery starting ===")
@@ -246,21 +248,12 @@ def discover_and_insert(db: Client) -> int:
         return 0
 
     existing = _existing_names(db)
-
-    # Fetch logo map once so we can store image_url on every new set
     logo_map = fetch_logo_map()
-
     inserted = 0
-    current_year = datetime.now(timezone.utc).year
 
     for s in scraped:
         if s["name"].lower() in existing:
             log.debug(f"  Already known: {s['name']}")
-            continue
-
-        # Skip sets that were fully released before the current calendar year
-        if s["release_date"] and int(s["release_date"][:4]) < current_year:
-            log.debug(f"  Skipping pre-{current_year} set: {s['name']}")
             continue
 
         image_url = match_logo(s["name"], logo_map) if logo_map else None
@@ -273,10 +266,49 @@ def discover_and_insert(db: Client) -> int:
         except Exception as e:
             log.error(f"  Failed to insert {s['name']}: {e}")
 
-        time.sleep(0.5)  # small courtesy delay between DB writes
+        time.sleep(0.5)
 
     log.info(f"=== Set discovery done — {inserted} new set(s) added ===")
     return inserted
+
+
+def try_discover_set(db: Client, set_name_guess: str) -> bool:
+    """
+    Attempt to confirm and insert a single set by name.
+    Called when a product is found on a retailer page that doesn't match
+    any known release. Checks Bulbapedia to confirm the set is real.
+    Returns True if the set was inserted, False otherwise.
+    """
+    if not set_name_guess or len(set_name_guess) < 3:
+        return False
+
+    existing = _existing_names(db)
+    if set_name_guess.lower() in existing:
+        return False  # Already known
+
+    log.info(f"  Auto-discovery: searching Bulbapedia for '{set_name_guess}'")
+    all_sets = _fetch_bulbapedia()
+    logo_map = fetch_logo_map()
+
+    for s in all_sets:
+        if set_name_guess.lower() in s["name"].lower() or s["name"].lower() in set_name_guess.lower():
+            if s["name"].lower() in existing:
+                return False
+            image_url = match_logo(s["name"], logo_map) if logo_map else None
+            try:
+                release_id = _insert_set(db, s["name"], s["series"], s["release_date"], image_url)
+                _insert_baseline_products(db, release_id, s["name"])
+                log.info(
+                    f"  Auto-discovery: inserted '{s['name']}' (id={release_id}) "
+                    f"— flagged for review (tins/specials may need adding)"
+                )
+                return True
+            except Exception as e:
+                log.error(f"  Auto-discovery: failed to insert '{s['name']}': {e}")
+                return False
+
+    log.debug(f"  Auto-discovery: '{set_name_guess}' not found on Bulbapedia")
+    return False
 
 
 # ── Standalone test ───────────────────────────────────────────────────────────

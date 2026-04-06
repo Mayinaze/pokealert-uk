@@ -3,10 +3,13 @@ GAME Scraper
 ============
 game.co.uk — major UK games retailer, strong Pokémon TCG presence.
 
-Strategy:
-- Search by product name (e.g. "Prismatic Evolutions Elite Trainer Box")
-- GAME uses standard button text: "Add to Basket", "Pre-Order", "Sold Out"
-- Product pages are mostly server-rendered, reliable for text scraping
+Category page approach:
+- Search game.co.uk for "pokemon trading card game" to get full listings
+- GAME pages are mostly server-rendered, reliable for text scraping
+
+Status detection:
+- Button classes + text (primary)
+- Page text fallback
 """
 
 import time
@@ -44,14 +47,13 @@ def get_status_from_page(url: str) -> tuple[str, str | None]:
     try:
         resp = SESSION.get(url, timeout=15)
         resp.raise_for_status()
-        soup = BeautifulSoup(resp.text, "lxml")
+        soup      = BeautifulSoup(resp.text, "lxml")
         image_url = extract_og_image(soup)
 
         for btn in soup.find_all(["button", "a"], class_=True):
-            cls  = " ".join(btn.get("class", [])).lower()
-            text = btn.get_text(strip=True).lower()
+            cls      = " ".join(btn.get("class", [])).lower()
+            text     = btn.get_text(strip=True).lower()
             combined = cls + " " + text
-
             if "pre-order" in combined or "preorder" in combined:
                 return "preorder", image_url
             if "add to basket" in combined or "buy now" in combined:
@@ -74,57 +76,88 @@ def get_status_from_page(url: str) -> tuple[str, str | None]:
         return "unknown", None
 
 
-def search_game(query: str) -> str | None:
-    """Search GAME and return the URL of the best matching product."""
-    try:
+def _parse_search_page(soup: BeautifulSoup) -> list[dict]:
+    """Extract product candidates from a GAME search results page."""
+    products = []
+    seen: set[str] = set()
+
+    for a in soup.find_all("a", href=True):
+        href = a["href"]
+        # GAME product URLs end in .html and contain /en/
+        if not (href.endswith(".html") and "/en/" in href and "/search" not in href):
+            continue
+        url = href if href.startswith("http") else f"{BASE_URL}{href}"
+        if url in seen:
+            continue
+        seen.add(url)
+
+        name = a.get_text(" ", strip=True)
+        if not name or len(name) < 5:
+            parent = a.parent
+            for _ in range(4):
+                if parent is None:
+                    break
+                heading = parent.find(["h2", "h3", "span"],
+                                      class_=lambda c: c and any(
+                                          k in c.lower() for k in ("name", "title", "product")))
+                if heading and heading.get_text(strip=True):
+                    name = heading.get_text(" ", strip=True)
+                    break
+                parent = parent.parent
+
+        if not name or len(name) < 5:
+            continue
+
+        price = None
+        parent = a.parent
+        for _ in range(5):
+            if parent is None:
+                break
+            price_el = parent.find(class_=lambda c: c and "price" in c.lower())
+            if price_el:
+                price = price_el.get_text(strip=True)
+                break
+            parent = parent.parent
+
+        image_url = None
+        parent = a.parent
+        for _ in range(4):
+            if parent is None:
+                break
+            img = parent.find("img")
+            if img:
+                image_url = img.get("src") or img.get("data-src")
+                break
+            parent = parent.parent
+
+        products.append({"name": name, "url": url, "price": price, "status": "unknown", "image_url": image_url})
+
+    return products
+
+
+def browse_category() -> list[dict]:
+    """
+    Browse GAME's Pokémon TCG search results and return all product candidates.
+    """
+    all_products: list[dict] = []
+    seen_urls: set[str] = set()
+
+    for query in ["pokemon trading card game", "pokemon elite trainer box", "pokemon booster box"]:
         url = SEARCH_URL.format(query=requests.utils.quote(query))
-        resp = SESSION.get(url, timeout=15)
-        resp.raise_for_status()
-        soup = BeautifulSoup(resp.text, "lxml")
+        try:
+            resp = SESSION.get(url, timeout=20)
+            resp.raise_for_status()
+        except requests.RequestException as e:
+            log.warning(f"GAME category fetch failed for '{query}': {e}")
+            continue
 
-        for a in soup.find_all("a", href=True):
-            href = a["href"]
-            if href.endswith(".html") and "/search" not in href and "/en/" in href:
-                return href if href.startswith("http") else f"{BASE_URL}{href}"
-
-        for a in soup.find_all("a", href=True):
-            href = a["href"]
-            if "pokemon" in href.lower() and href.endswith(".html"):
-                return href if href.startswith("http") else f"{BASE_URL}{href}"
-
-        return None
-
-    except requests.RequestException as e:
-        log.warning(f"GAME search failed for '{query}': {e}")
-        return None
-
-
-def scrape_game(products: list[dict]) -> dict[int, dict]:
-    """
-    Main entry point.
-    products: list of product dicts (id, release_id, type, name, sort_order)
-    Returns: { product_id: { "status": str, "url": str } }
-    """
-    results = {}
-
-    for product in products:
-        pid  = product["id"]
-        name = product["name"]
-
-        log.info(f"  GAME: searching for '{name}'")
-        url = search_game(name)
-
-        if not url:
-            log.info(f"  GAME: no result found for '{name}'")
-            results[pid] = {
-                "status": "unknown",
-                "url": SEARCH_URL.format(query=requests.utils.quote(name)),
-            }
-        else:
-            status, image_url = get_status_from_page(url)
-            log.info(f"  GAME: '{name}' → {status} ({url})")
-            results[pid] = {"status": status, "url": url, "image_url": image_url}
-
+        soup  = BeautifulSoup(resp.text, "lxml")
+        found = _parse_search_page(soup)
+        new   = [p for p in found if p["url"] not in seen_urls]
+        for p in new:
+            seen_urls.add(p["url"])
+        all_products.extend(new)
         time.sleep(2)
 
-    return results
+    log.info(f"GAME: found {len(all_products)} products across category searches")
+    return all_products
